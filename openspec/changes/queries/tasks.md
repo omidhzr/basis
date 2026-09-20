@@ -37,10 +37,10 @@ changes behaviour the existing suite already exercises.
 Separate session. `@SpringBootTest` with MockMvc against the real H2 schema,
 one test per scenario in the spec delta.
 
-- [ ] 5.1 Assert a request reads back with its current values and its history, and that an unknown identifier is `404` with a problem detail
-- [ ] 5.2 Assert history is returned newest first for a request that was created, amended and decided, each entry naming the version it concerned
-- [ ] 5.3 Assert a reviewer's queue holds `PENDING` requests raised by others and never their own, and that a requester's queue holds their own in every state and no one else's
-- [ ] 5.4 Assert a status narrows the requester's queue, that a status other than `PENDING` widens the reviewer's to that status still excluding their own, and that an unknown status is `400`
-- [ ] 5.5 Assert the approved exception is returned for an application, that the most recent of two approvals wins, and that an application with none is `404` — acceptance criterion 6
-- [ ] 5.6 Correct the comments in `ExceptionRequestApiTest` and `IdempotentCreateTest` that explain history is read through the store "because the read endpoints belong to a later slice". Verify the assertions themselves are unchanged — what they assert is still worth asserting directly
-- [ ] 5.7 Run `./mvnw test` and confirm the whole suite is green before the change is verified or archived
+- [x] 5.1 Assert a request reads back with its current values and its history, and that an unknown identifier is `404` with a problem detail
+- [x] 5.2 Assert history is returned newest first for a request that was created, amended and decided, each entry naming the version it concerned
+- [x] 5.3 Assert a reviewer's queue holds `PENDING` requests raised by others and never their own, and that a requester's queue holds their own in every state and no one else's
+- [x] 5.4 Assert a status narrows the requester's queue, that a status other than `PENDING` widens the reviewer's to that status still excluding their own, and that an unknown status is `400`
+- [x] 5.5 Assert the approved exception is returned for an application, that the most recent of two approvals wins, and that an application with none is `404` — acceptance criterion 6
+- [x] 5.6 Correct the comments in `ExceptionRequestApiTest` and `IdempotentCreateTest` that explain history is read through the store "because the read endpoints belong to a later slice". Verify the assertions themselves are unchanged — what they assert is still worth asserting directly
+- [x] 5.7 Run `./mvnw test` and confirm the whole suite is green before the change is verified or archived

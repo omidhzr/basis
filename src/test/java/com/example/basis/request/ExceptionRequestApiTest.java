@@ -29,9 +29,10 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
  * scenario in the spec delta; the repository is not mocked, because the
  * guarded statements are the thing being tested.
  *
- * <p>History is read through the store rather than through an endpoint: the
- * read endpoints belong to a later slice, and the append-only trail still has
- * to be asserted now.
+ * <p>History is read through the store rather than through {@code GET
+ * /requests/{id}}: these tests assert what each transition stored, which is a
+ * claim about the trail itself rather than about the shape it is served in.
+ * The read endpoints are covered by {@link RequestQueriesTest}.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -367,8 +368,9 @@ class ExceptionRequestApiTest {
                         .content("{\"applicationId\":\" \",\"discountBps\":25,\"reason\":\"" + REASON + "\"}"))
                 .andExpect(status().isBadRequest());
 
-        // Queried directly: reading requests by application is a later slice,
-        // and "nothing was stored" still has to be asserted now.
+        // Queried directly: no endpoint lists an application's requests, and
+        // "nothing at all was stored" is a claim about the table rather than
+        // about anything the API offers to return.
         assertThat(db.sql("SELECT COUNT(*) FROM exception_request WHERE application_id = ?")
                 .param("APP-9")
                 .query(Integer.class)

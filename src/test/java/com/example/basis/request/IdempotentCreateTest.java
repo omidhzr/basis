@@ -32,8 +32,9 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
  * <p>Each test works against an application identifier of its own, because the
  * schema is shared across the suite and "exactly one request was created" is
  * counted rather than inferred. Requests and records are read back through the
- * store and the database: the read endpoints belong to a later slice, and what
- * was stored still has to be asserted now.
+ * store and the database rather than through an endpoint: a replay must return
+ * the stored response and create nothing new, and both halves of that are
+ * claims about what is in the tables rather than about what a read serves.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
