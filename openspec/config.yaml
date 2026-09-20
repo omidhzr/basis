@@ -61,6 +61,16 @@ context: |
   Identity is stubbed: `X-User-Id` and `X-User-Role` headers stand in for JWT
   claims. Authorisation is real and tested; authentication is not built.
 
+  PRECEDENCE — CLAUDE.md at the repository root is the source of truth. It
+  already fixes the data model, the API surface, the enumerations, the
+  validation rules, the status codes and the acceptance criteria. Generated
+  specs restate that contract in scenario form; they do not extend or revise
+  it. Where a generated artifact and CLAUDE.md disagree, CLAUDE.md is correct
+  and the artifact is the defect - fix the artifact, never reconcile by
+  changing the service's behaviour. Where CLAUDE.md is silent on something an
+  artifact needs, that is a gap: say so and ask, rather than inventing a value
+  and recording it as though it were specified.
+
 rules:
   proposal:
     - >-
@@ -77,6 +87,12 @@ rules:
         Scenarios state observable HTTP behaviour including the status code. Stale version and illegal transition are 409; four-eyes and missing role are 403; validation failure is 400; replay with a different body is 422.
     - >-
         Keep specs to externally observable behaviour. No class names, no SQL, no framework detail — those belong in design.
+    - >-
+        Before writing a scenario, check the corresponding table in CLAUDE.md -
+        the API surface, the enumerations, the validation rules and the status
+        codes are fixed there. Reproduce those values exactly. A scenario that
+        cannot be traced to CLAUDE.md or to a numbered acceptance criterion is
+        either a defect or a gap to raise, never an invention.
 
   design:
     - >-
@@ -97,6 +113,11 @@ rules:
         Do not pair a test task with its implementation task in a way that invites writing both in one pass. Implement against the acceptance criterion, then review the test against that criterion separately.
     - >-
         Each task names its verification — a test, a command, or an observable response.
+    - >-
+        Where a task satisfies one of the numbered acceptance criteria in
+        CLAUDE.md, name it by number in the task's verification. This is what
+        lets a separate session write the test from the criterion rather than
+        from the implementation.
 
 operations:
   apply:
