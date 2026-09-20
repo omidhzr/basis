@@ -2,6 +2,8 @@ package com.example.basis.request;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -402,6 +404,25 @@ class ExceptionRequestApiTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"applicationId\":\"APP-1\",\"discountBps\":25,\"reason\":\"" + REASON + "\"}"))
                 .andExpect(status().isBadRequest()).andReturn());
+
+        // The rejections Spring raises before any handler runs owe the caller
+        // the same explanation as the ones the service raises itself. Each of
+        // these answered with the right status before the advice reached them
+        // and a body of the wrong shape, so the content type is the assertion
+        // that matters here.
+        assertProblemDetail(mvc.perform(post("/requests")
+                        .header("X-User-Id", REQUESTER)
+                        .header("X-User-Role", UserRole.RELATIONSHIP_MANAGER.name())
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.TEXT_PLAIN)
+                        .content("not json"))
+                .andExpect(status().isUnsupportedMediaType()).andReturn());
+
+        assertProblemDetail(mvc.perform(asRm(REQUESTER, delete("/requests/" + id)))
+                .andExpect(status().isMethodNotAllowed()).andReturn());
+
+        assertProblemDetail(mvc.perform(asRm(REQUESTER, get("/no-such-endpoint")))
+                .andExpect(status().isNotFound()).andReturn());
     }
 
     private void assertProblemDetail(MvcResult result) throws Exception {

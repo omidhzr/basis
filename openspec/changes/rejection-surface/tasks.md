@@ -30,8 +30,8 @@ undefined and the business has now settled.
 Separate session. `@SpringBootTest` with MockMvc against the real H2 schema,
 one test per scenario added to the spec delta.
 
-- [ ] 4.1 Assert an unsupported content type, an unsupported method and an unknown path each return a problem detail with a title and a detail. Verify each asserts the content type, not only the status — the status was already right before this change and the body was not
-- [ ] 4.2 Assert an `X-User-Id` of 129 characters is `400` on create, amend, decide and withdraw, and that 128 is accepted
-- [ ] 4.3 Assert a `PATCH` carrying only the version is `400`, and that the request is unchanged with no history entry appended
-- [ ] 4.4 Assert an amendment carrying only the discount, and one carrying only the reason, each still succeed
-- [ ] 4.5 Run `./mvnw test` and confirm the whole suite is green before the change is verified or archived
+- [x] 4.1 Assert an unsupported content type, an unsupported method and an unknown path each return a problem detail with a title and a detail. Verify each asserts the content type, not only the status — the status was already right before this change and the body was not
+- [x] 4.2 Assert an `X-User-Id` of 129 characters is `400` on create, amend, decide and withdraw, and that 128 is accepted
+- [x] 4.3 Assert a `PATCH` carrying only the version is `400`, and that the request is unchanged with no history entry appended
+- [x] 4.4 Assert an amendment carrying only the discount, and one carrying only the reason, each still succeed
+- [x] 4.5 Run `./mvnw test` and confirm the whole suite is green before the change is verified or archived
