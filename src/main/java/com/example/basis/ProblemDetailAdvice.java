@@ -1,5 +1,6 @@
 package com.example.basis;
 
+import com.example.basis.request.ApprovedExceptionNotFoundException;
 import com.example.basis.request.ConflictException;
 import com.example.basis.request.EmptyAmendmentException;
 import com.example.basis.request.KeyReusedException;
@@ -162,6 +163,11 @@ public class ProblemDetailAdvice extends ResponseEntityExceptionHandler {
     @ExceptionHandler(RequestNotFoundException.class)
     public ProblemDetail onNotFound(RequestNotFoundException e) {
         return problem(HttpStatus.NOT_FOUND, "No such request", e.getMessage());
+    }
+
+    @ExceptionHandler(ApprovedExceptionNotFoundException.class)
+    public ProblemDetail onNoApprovedException(ApprovedExceptionNotFoundException e) {
+        return problem(HttpStatus.NOT_FOUND, "No approved exception", e.getMessage());
     }
 
     @ExceptionHandler(ConflictException.class)

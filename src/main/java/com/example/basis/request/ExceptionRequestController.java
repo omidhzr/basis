@@ -4,15 +4,18 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import java.net.URI;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -60,6 +63,45 @@ public class ExceptionRequestController {
                 .location(URI.create("/requests/" + outcome.requestId()))
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(outcome.responseBody());
+    }
+
+    /**
+     * The queue, whose contents depend on who is asking. A reviewer is offered
+     * work raised by others; anyone else sees their own. Binding status to the
+     * enum means a value outside the four is the 400 the advice already
+     * answers, with no check written here.
+     */
+    @GetMapping
+    public List<RequestBodies.View> queue(
+            @RequestHeader("X-User-Id")
+            @Size(max = RequestLimits.MAX_IDENTITY_LENGTH,
+                  message = "must be at most {max} characters")
+            String userId,
+            @RequestHeader("X-User-Role") UserRole role,
+            @RequestParam(required = false) RequestStatus status) {
+
+        List<ExceptionRequest> queue = role == UserRole.REVIEWER
+                ? store.queueForReviewer(userId, status)
+                : store.queueForRequester(userId, status);
+
+        return queue.stream().map(RequestBodies.View::of).toList();
+    }
+
+    /**
+     * The request and its trail in one response. No role is checked: the two
+     * roles this service has are the only callers there are, so a check would
+     * restrict nothing -- see the open question in the README.
+     */
+    @GetMapping("/{id}")
+    public RequestBodies.Detail read(
+            @PathVariable UUID id,
+            @RequestHeader("X-User-Id")
+            @Size(max = RequestLimits.MAX_IDENTITY_LENGTH,
+                  message = "must be at most {max} characters")
+            String userId,
+            @RequestHeader("X-User-Role") UserRole role) {
+
+        return store.detailOf(id);
     }
 
     @PatchMapping("/{id}")

@@ -240,16 +240,88 @@ public class ExceptionRequestStore {
                 .optional();
     }
 
+    /**
+     * Newest first. Version leads because it is what the domain increments and
+     * it never decreases, so the order follows the versions the request
+     * actually moved through rather than the precision of the clock. The time
+     * separates two entries within one version -- an amendment to version 2 and
+     * the decision recorded against it -- and the id is a last resort that
+     * makes repeated reads agree with each other.
+     */
     public List<HistoryEntry> historyOf(UUID id) {
         return db.sql("""
                 SELECT id, request_id, entry_type, version, actor, payload, occurred_at
                   FROM request_history
                  WHERE request_id = ?
-                 ORDER BY occurred_at DESC, version DESC
+                 ORDER BY version DESC, occurred_at DESC, id DESC
                 """)
                 .param(id)
                 .query(ExceptionRequestStore::toEntry)
                 .list();
+    }
+
+    /**
+     * The approved exception that applies to an application.
+     *
+     * <p>Supersession is inferred here rather than recorded: an application may
+     * accumulate more than one approval, terminal requests are immutable, and
+     * so the most recently decided one is taken to be the one in force. This
+     * ORDER BY is that rule, and it is the weaker choice CLAUDE.md records --
+     * production would add a SUPERSEDED status and a superseded_by link,
+     * guarded by a partial unique index, so that the chain is a fact rather
+     * than a derivation. When that changes, it changes here.
+     */
+    public Optional<ExceptionRequest> approvedExceptionFor(String applicationId) {
+        return db.sql(SELECT_COLUMNS + """
+                 WHERE application_id = ? AND status = 'APPROVED'
+                 ORDER BY decided_at DESC
+                 FETCH FIRST 1 ROW ONLY
+                """)
+                .param(applicationId)
+                .query(ExceptionRequestStore::toRequest)
+                .optional();
+    }
+
+    /**
+     * The reviewer's queue: requests raised by someone else. Four-eyes lives
+     * in the WHERE clause, so no client can display a request its caller
+     * raised -- the API never returns one. Absent a status the queue holds
+     * what there is to review; a status given explicitly replaces that
+     * default, so a reviewer can look back at what was decided.
+     */
+    public List<ExceptionRequest> queueForReviewer(String reviewer, RequestStatus status) {
+        RequestStatus wanted = status == null ? RequestStatus.PENDING : status;
+        return db.sql(SELECT_COLUMNS + """
+                 WHERE requested_by <> ? AND status = ?
+                 ORDER BY created_at DESC
+                """)
+                .params(reviewer, wanted.name())
+                .query(ExceptionRequestStore::toRequest)
+                .list();
+    }
+
+    /**
+     * The requester's own requests, in every state unless one is asked for.
+     * The status is optional in the statement rather than in two statements,
+     * so there is one query to read and one plan to reason about.
+     */
+    public List<ExceptionRequest> queueForRequester(String requester, RequestStatus status) {
+        return db.sql(SELECT_COLUMNS + """
+                 WHERE requested_by = ? AND (? IS NULL OR status = ?)
+                 ORDER BY created_at DESC
+                """)
+                .params(requester, status == null ? null : status.name(), status == null ? null : status.name())
+                .query(ExceptionRequestStore::toRequest)
+                .list();
+    }
+
+    /**
+     * A request with its history. Read together so that the two cannot be
+     * reported from different moments.
+     */
+    @Transactional(readOnly = true)
+    public RequestBodies.Detail detailOf(UUID id) {
+        return RequestBodies.Detail.of(require(id), historyOf(id), json);
     }
 
     private ExceptionRequest require(UUID id) {
