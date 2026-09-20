@@ -341,16 +341,35 @@ criteria 7–9 are verified manually; say so rather than implying coverage.
   policy decision, not a known business rule.
 - Retention, availability and data-protection requirements were not specified
   and are not invented.
+## Open questions for the business (record in README)
+
+Points where the brief does not decide, and the service had to. Each states the
+behaviour built, so nothing is silently undefined, and why it is the safer
+reading. None is a technical choice; all four need a business answer before
+production.
+
 - **An approved exception does not expire.** Once approved, the discount stays
   available to the application process indefinitely. Nothing in the brief
   suggests a validity period, but an indefinite discount is a commercial
-  exposure — flag it as a question for the business rather than inventing a
-  duration.
+  exposure — a question for the business rather than a duration to invent.
 - **A reviewer cannot counter-offer.** Approve means approve the requested
   amount exactly; there is no "approve at 25 instead of 40". Allowing the
   reviewer to change the amount would make him the requester and break
   four-eyes. A lower amount therefore requires a decline and a new request,
-  which loses the link between the two — also a question for the business.
+  which loses the link between the two.
+- **Anyone may raise a request, including a reviewer.** Nothing restricts
+  creation to a relationship manager, and the reviewer queue returns pending
+  requests *raised by others* — wording that only means something if a reviewer
+  can raise one. No role is therefore checked on create, and four-eyes still
+  stops a reviewer deciding their own request. If raising a request is meant to
+  be a relationship manager's act alone, that is a role check to add.
+- **Only the requester may amend their own request.** The brief offers amend
+  and withdraw to the requester on the detail screen but does not say what
+  happens when anyone else attempts one. A third party's amendment is rejected,
+  matching withdrawal. The restrictive reading is deliberate: relaxing it later
+  is safe, whereas tightening it after the fact invalidates requests already
+  amended. Whether a reviewer or a colleague should be able to amend on the
+  requester's behalf is the open part.
 
 ## Out of scope — state in the README, do not build
 
