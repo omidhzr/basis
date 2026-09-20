@@ -50,22 +50,22 @@ commit together or not at all.
 Separate session. Written from the spec scenarios, in plain JUnit with no
 Spring context.
 
-- [ ] 5.1 Test the state machine against CLAUDE.md's diagram: every legal transition accepted, every illegal one refused. Verify the suite runs without a Spring context
-- [ ] 5.2 Test that a decision or amendment against a non-current version is refused, and that the refusal names the current version
-- [ ] 5.3 Test four-eyes, the reviewer role check and amend and withdrawal ownership, each for both the permitted and the refused caller
-- [ ] 5.4 Test the validation bounds at both edges: discount 1 and 200 accepted, 0 and 201 refused; reason at 10 and 500 accepted, 9 and 501 refused
+- [x] 5.1 Test the state machine against CLAUDE.md's diagram: every legal transition accepted, every illegal one refused. Verify the suite runs without a Spring context
+- [x] 5.2 Test that a decision or amendment against a non-current version is refused, and that the refusal names the current version
+- [x] 5.3 Test four-eyes, the reviewer role check and amend and withdrawal ownership, each for both the permitted and the refused caller
+- [x] 5.4 Test the validation bounds at both edges: discount 1 and 200 accepted, 0 and 201 refused; reason at 10 and 500 accepted, 9 and 501 refused
 
 ## 6. Verification — API integration tests
 
 Separate session. `@SpringBootTest` with MockMvc against the real H2 schema,
 one test per scenario in the spec delta.
 
-- [ ] 6.1 Create a request and assert `PENDING`, version 1 and a `CREATED` entry — acceptance criterion 1
-- [ ] 6.2 Amend, then approve the previous version and assert `409` — acceptance criterion 3
-- [ ] 6.3 Approve the current version as a reviewer and assert the outcome records who and when — acceptance criterion 4
-- [ ] 6.4 Attempt to approve one's own request and assert `403` — acceptance criterion 5
-- [ ] 6.5 Attempt to amend and to decide a terminal request and assert `409` for both
-- [ ] 6.6 Submit two amendments against the same version concurrently and assert exactly one succeeds and the other receives `409`. Verify this fails if the guard is moved out of the `UPDATE` statement
-- [ ] 6.7 Assert that calls rejected with `400`, `403` and `409` append no history entry
-- [ ] 6.8 Assert every non-2xx response carries a problem detail with a title and an actionable detail
-- [ ] 6.9 Run `./mvnw test` and confirm the whole suite is green before the change is verified or archived
+- [x] 6.1 Create a request and assert `PENDING`, version 1 and a `CREATED` entry — acceptance criterion 1
+- [x] 6.2 Amend, then approve the previous version and assert `409` — acceptance criterion 3
+- [x] 6.3 Approve the current version as a reviewer and assert the outcome records who and when — acceptance criterion 4
+- [x] 6.4 Attempt to approve one's own request and assert `403` — acceptance criterion 5
+- [x] 6.5 Attempt to amend and to decide a terminal request and assert `409` for both
+- [x] 6.6 Submit two amendments against the same version concurrently and assert exactly one succeeds and the other receives `409`. Verify this fails if the guard is moved out of the `UPDATE` statement
+- [x] 6.7 Assert that calls rejected with `400`, `403` and `409` append no history entry
+- [x] 6.8 Assert every non-2xx response carries a problem detail with a title and an actionable detail
+- [x] 6.9 Run `./mvnw test` and confirm the whole suite is green before the change is verified or archived
