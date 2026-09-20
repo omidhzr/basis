@@ -40,11 +40,15 @@ public class ExceptionRequestController {
      */
     @PostMapping
     public ResponseEntity<String> create(
-            @RequestHeader("X-User-Id") String userId,
+            @RequestHeader("X-User-Id")
+            @Size(max = RequestLimits.MAX_IDENTITY_LENGTH,
+                  message = "must be at most {max} characters")
+            String userId,
             @RequestHeader("X-User-Role") UserRole role,
             @RequestHeader("Idempotency-Key")
             @NotBlank
-            @Size(max = RequestLimits.MAX_IDEMPOTENCY_KEY_LENGTH)
+            @Size(max = RequestLimits.MAX_IDEMPOTENCY_KEY_LENGTH,
+                  message = "must be at most {max} characters")
             String idempotencyKey,
             @Valid @RequestBody RequestBodies.Create body) {
 
@@ -61,9 +65,16 @@ public class ExceptionRequestController {
     @PatchMapping("/{id}")
     public RequestBodies.View amend(
             @PathVariable UUID id,
-            @RequestHeader("X-User-Id") String userId,
+            @RequestHeader("X-User-Id")
+            @Size(max = RequestLimits.MAX_IDENTITY_LENGTH,
+                  message = "must be at most {max} characters")
+            String userId,
             @RequestHeader("X-User-Role") UserRole role,
             @Valid @RequestBody RequestBodies.Amend body) {
+
+        if (body.discountBps() == null && body.reason() == null) {
+            throw new EmptyAmendmentException();
+        }
 
         return RequestBodies.View.of(
                 store.amend(id, body.version(), userId, body.discountBps(), body.reason()));
@@ -72,7 +83,10 @@ public class ExceptionRequestController {
     @PostMapping("/{id}/decision")
     public RequestBodies.View decide(
             @PathVariable UUID id,
-            @RequestHeader("X-User-Id") String userId,
+            @RequestHeader("X-User-Id")
+            @Size(max = RequestLimits.MAX_IDENTITY_LENGTH,
+                  message = "must be at most {max} characters")
+            String userId,
             @RequestHeader("X-User-Role") UserRole role,
             @Valid @RequestBody RequestBodies.Decide body) {
 
@@ -83,7 +97,10 @@ public class ExceptionRequestController {
     @PostMapping("/{id}/withdrawal")
     public RequestBodies.View withdraw(
             @PathVariable UUID id,
-            @RequestHeader("X-User-Id") String userId,
+            @RequestHeader("X-User-Id")
+            @Size(max = RequestLimits.MAX_IDENTITY_LENGTH,
+                  message = "must be at most {max} characters")
+            String userId,
             @RequestHeader("X-User-Role") UserRole role,
             @Valid @RequestBody RequestBodies.Withdraw body) {
 
