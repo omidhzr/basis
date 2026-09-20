@@ -27,18 +27,28 @@ rule made visible, not a new one.
 
 ## Decisions
 
-### History is ordered by version first, then by time
+### History is ordered by version first, then by time, then by transition
 
-`ORDER BY version DESC, occurred_at DESC, id DESC`, replacing the
-`occurred_at DESC, version DESC` the append-only trail is read with today.
+`ORDER BY version DESC, occurred_at DESC, <a decision after the entry it
+reviewed> DESC, id DESC`, replacing the `occurred_at DESC, version DESC` the
+append-only trail is read with today.
 
 Version is the thing the domain increments, and it never decreases: an
 amendment raises it, and every later entry carries at least the version of the
 one before. Ordering by it first means the sequence shown to a reviewer follows
 the versions the request moved through, and the clock is consulted only to
 separate two entries *within* one version — an amendment to version 2 and the
-decision recorded against version 2, which is exactly the pair a timestamp
-orders well.
+decision recorded against version 2.
+
+The clock alone does not separate that pair. `Instant.now()` is granular to a
+millisecond or worse on some hosts, and an amendment followed by the decision
+reviewing it can land in one tick, which made the order of the two a coin-toss
+decided by a random UUID — the integration test written for this scenario
+caught it. So the transition itself breaks the tie: a terminal entry sorts
+after the `CREATED` or `AMENDED` entry of the same version, and the state
+machine guarantees there is at most one such pair, because a version admits one
+decision and a request that has been decided admits no further entries. That
+makes the order total on domain facts rather than on timing.
 
 The reverse — time first, version second — was what the code did and what this
 change was going to keep. It makes the order depend on clock precision in the
@@ -51,9 +61,10 @@ position needs to carry.
 `request_history`, ordered by append order. It answers the same-instant case
 exactly rather than stably, and an append-only log ordered by when it was
 appended is an honest design. Rejected because `request_history` has the columns
-CLAUDE.md's data model names, adding one for a tie that version already breaks
-would be a schema change bought with nothing, and the ordering above depends on
-domain data rather than on a database feature.
+CLAUDE.md's data model names, and the version and the transition together
+already break every tie the state machine can produce, so the column would be a
+schema change bought with nothing. The ordering above depends on domain data
+rather than on a database feature.
 
 ### The queue is two statements chosen by role, not one statement with a role in it
 
@@ -125,7 +136,9 @@ coin-toss. → Two approvals on one application are already an unusual state, an
 two in the same tick require two reviewers deciding simultaneously on requests
 that should not both exist. Recorded here rather than guarded, because the
 guard that would fix it properly is the `SUPERSEDED` status this service
-deliberately does not model.
+deliberately does not model. The integration test for the rule waits for the
+clock to move between its two approvals rather than pretending the tie is
+resolved, so what it asserts is the rule and not a coin-toss.
 
 ## Open Questions
 

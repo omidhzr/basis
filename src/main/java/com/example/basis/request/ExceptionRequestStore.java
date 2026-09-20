@@ -244,16 +244,22 @@ public class ExceptionRequestStore {
      * Newest first. Version leads because it is what the domain increments and
      * it never decreases, so the order follows the versions the request
      * actually moved through rather than the precision of the clock. The time
-     * separates two entries within one version -- an amendment to version 2 and
-     * the decision recorded against it -- and the id is a last resort that
-     * makes repeated reads agree with each other.
+     * separates two entries within one version, and where the clock cannot --
+     * Instant.now() is granular to a millisecond or worse on some hosts, so an
+     * amendment and the decision reviewing it can share an occurred_at -- the
+     * transition itself does: the state machine allows at most one terminal
+     * entry per version, and it is always the later of the pair. The id is a
+     * last resort that makes repeated reads agree with each other.
      */
     public List<HistoryEntry> historyOf(UUID id) {
         return db.sql("""
                 SELECT id, request_id, entry_type, version, actor, payload, occurred_at
                   FROM request_history
                  WHERE request_id = ?
-                 ORDER BY version DESC, occurred_at DESC, id DESC
+                 ORDER BY version DESC,
+                          occurred_at DESC,
+                          CASE WHEN entry_type IN ('CREATED', 'AMENDED') THEN 0 ELSE 1 END DESC,
+                          id DESC
                 """)
                 .param(id)
                 .query(ExceptionRequestStore::toEntry)

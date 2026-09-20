@@ -96,9 +96,11 @@ The system SHALL append one history entry per state change and SHALL never
 alter or remove an entry once written. Each entry records the type of
 transition, the acting user, the version the entry concerned, and the values
 that transition carried. Entries SHALL be returned newest first, ordered by the
-version each entry concerned and then by when it occurred, so that the order
-follows the versions the request actually moved through rather than the
-precision of the clock. The order SHALL be the same on every read.
+version each entry concerned, then by when it occurred, and then by the
+transition itself, a decision being the later of any pair sharing a version, so
+that the order follows the versions and transitions the request actually moved
+through rather than the precision of the clock. The order SHALL be the same on
+every read.
 
 #### Scenario: History accumulates across the life of a request
 
@@ -116,3 +118,8 @@ precision of the clock. The order SHALL be the same on every read.
 - **WHEN** a request's history holds two entries concerning different versions whose recorded times are identical
 - **THEN** the entry concerning the higher version is returned first
 - **AND** repeating the read returns the history in the same order every time
+
+#### Scenario: A decision and the amendment it reviewed are still ordered
+
+- **WHEN** a request's history holds an amendment and the decision recorded against that same version, whose recorded times are identical
+- **THEN** the decision is returned first
