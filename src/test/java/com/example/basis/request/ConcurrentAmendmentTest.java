@@ -143,6 +143,7 @@ class ConcurrentAmendmentTest {
 
     private UUID createRequest() throws Exception {
         String body = mvc.perform(as(REQUESTER, UserRole.RELATIONSHIP_MANAGER, post("/requests"))
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
                         .content("{\"applicationId\":\"APP-RACE\",\"discountBps\":25,\"reason\":\"" + REASON + "\"}"))
                 .andExpect(status().isCreated())
                 .andReturn()

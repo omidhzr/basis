@@ -1,8 +1,11 @@
 package com.example.basis.request;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import java.net.URI;
 import java.util.UUID;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -30,18 +33,29 @@ public class ExceptionRequestController {
         this.store = store;
     }
 
+    /**
+     * The response body travels as the stored bytes rather than as an object,
+     * so that a replay returns what the first caller received rather than a
+     * response rebuilt from state that may have moved since.
+     */
     @PostMapping
-    public ResponseEntity<RequestBodies.View> create(
+    public ResponseEntity<String> create(
             @RequestHeader("X-User-Id") String userId,
             @RequestHeader("X-User-Role") UserRole role,
+            @RequestHeader("Idempotency-Key")
+            @NotBlank
+            @Size(max = RequestLimits.MAX_IDEMPOTENCY_KEY_LENGTH)
+            String idempotencyKey,
             @Valid @RequestBody RequestBodies.Create body) {
 
-        ExceptionRequest created = store.create(
-                body.applicationId(), body.discountBps(), body.reason(), userId);
+        CreateOutcome outcome = store.create(
+                body.applicationId(), body.discountBps(), body.reason(), userId, idempotencyKey);
 
         return ResponseEntity
-                .created(URI.create("/requests/" + created.id()))
-                .body(RequestBodies.View.of(created));
+                .status(outcome.statusCode())
+                .location(URI.create("/requests/" + outcome.requestId()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(outcome.responseBody());
     }
 
     @PatchMapping("/{id}")

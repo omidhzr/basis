@@ -56,7 +56,7 @@ class ExceptionRequestApiTest {
     @Test
     @DisplayName("a created request is PENDING at version 1 with a CREATED history entry")
     void createRecordsAPendingRequestAtVersionOne() throws Exception {
-        MvcResult result = mvc.perform(asRm(REQUESTER, post("/requests"))
+        MvcResult result = mvc.perform(withKey(asRm(REQUESTER, post("/requests")))
                         .content("{\"applicationId\":\"APP-1\",\"discountBps\":25,\"reason\":\"" + REASON + "\"}"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.status").value("PENDING"))
@@ -353,15 +353,15 @@ class ExceptionRequestApiTest {
     @Test
     @DisplayName("a rejected create stores nothing")
     void rejectedCreateStoresNothing() throws Exception {
-        mvc.perform(asRm(REQUESTER, post("/requests"))
+        mvc.perform(withKey(asRm(REQUESTER, post("/requests")))
                         .content("{\"applicationId\":\"APP-9\",\"discountBps\":201,\"reason\":\"" + REASON + "\"}"))
                 .andExpect(status().isBadRequest());
 
-        mvc.perform(asRm(REQUESTER, post("/requests"))
+        mvc.perform(withKey(asRm(REQUESTER, post("/requests")))
                         .content("{\"applicationId\":\"APP-9\",\"discountBps\":25,\"reason\":\"too short\"}"))
                 .andExpect(status().isBadRequest());
 
-        mvc.perform(asRm(REQUESTER, post("/requests"))
+        mvc.perform(withKey(asRm(REQUESTER, post("/requests")))
                         .content("{\"applicationId\":\" \",\"discountBps\":25,\"reason\":\"" + REASON + "\"}"))
                 .andExpect(status().isBadRequest());
 
@@ -423,7 +423,7 @@ class ExceptionRequestApiTest {
     // --- Helpers -----------------------------------------------------------
 
     private UUID createRequest() throws Exception {
-        return idOf(mvc.perform(asRm(REQUESTER, post("/requests"))
+        return idOf(mvc.perform(withKey(asRm(REQUESTER, post("/requests")))
                         .content("{\"applicationId\":\"APP-1\",\"discountBps\":25,\"reason\":\"" + REASON + "\"}"))
                 .andExpect(status().isCreated())
                 .andReturn());
@@ -435,6 +435,15 @@ class ExceptionRequestApiTest {
 
     private List<EntryType> typesInHistoryOf(UUID id) {
         return store.historyOf(id).stream().map(HistoryEntry::entryType).toList();
+    }
+
+    /**
+     * A create carries an idempotency key. These tests assert the lifecycle
+     * rather than the replay contract, so each gets a key of its own and no
+     * assertion here turns on its value.
+     */
+    private static MockHttpServletRequestBuilder withKey(MockHttpServletRequestBuilder builder) {
+        return builder.header("Idempotency-Key", UUID.randomUUID().toString());
     }
 
     /** Identity stands in for JWT claims; see the note on the controller. */

@@ -1,6 +1,7 @@
 package com.example.basis.request;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -12,9 +13,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.dao.DuplicateKeyException;
+import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * Every write here is one transaction: the guarded UPDATE and the history
@@ -37,14 +41,40 @@ public class ExceptionRequestStore {
 
     private final JdbcClient db;
     private final ObjectMapper json;
+    private final TransactionTemplate transactions;
 
-    public ExceptionRequestStore(JdbcClient db, ObjectMapper json) {
+    public ExceptionRequestStore(JdbcClient db, ObjectMapper json, TransactionTemplate transactions) {
         this.db = db;
         this.json = json;
+        this.transactions = transactions;
     }
 
-    @Transactional
-    public ExceptionRequest create(String applicationId, int discountBps, String reason, String actor) {
+    /**
+     * Creates a request, or replays the create this key already stands for.
+     *
+     * <p>The transaction is opened explicitly rather than with an annotation
+     * because the duplicate key has to be caught <em>outside</em> it: the
+     * violation poisons the transaction, so the stored response cannot be read
+     * until it has rolled back. A self-invoked annotated method would not be
+     * proxied and would not be transactional at all.
+     *
+     * <p>Waiting for that rollback is safe. H2 holds the second insert until
+     * the transaction owning the key ends -- if it committed, the record is
+     * there to replay; if it rolled back, this insert succeeds and this caller
+     * is the one that created the request.
+     */
+    public CreateOutcome create(String applicationId, int discountBps, String reason,
+                                String actor, String idempotencyKey) {
+        try {
+            return transactions.execute(status ->
+                    insertNew(applicationId, discountBps, reason, actor, idempotencyKey));
+        } catch (DuplicateKeyException alreadyUsed) {
+            return replay(idempotencyKey, actor, applicationId, discountBps, reason);
+        }
+    }
+
+    private CreateOutcome insertNew(String applicationId, int discountBps, String reason,
+                                    String actor, String idempotencyKey) {
         UUID id = UUID.randomUUID();
         Instant now = Instant.now();
 
@@ -61,7 +91,65 @@ public class ExceptionRequestStore {
         carried.put("reason", reason);
         appendHistory(id, EntryType.CREATED, 1, actor, payload(carried), now);
 
-        return require(id);
+        // Written last, from the value the endpoint returns, so that "the
+        // stored response is the response the caller received" holds by
+        // construction rather than by two places agreeing.
+        String responseBody = serialise(RequestBodies.View.of(require(id)));
+        db.sql("""
+                INSERT INTO idempotency_record ("key", caller, request_id, response_body,
+                                                status_code, created_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """)
+                .params(idempotencyKey, actor, id, responseBody, HttpStatus.CREATED.value(), at(now))
+                .update();
+
+        return new CreateOutcome(id, HttpStatus.CREATED.value(), responseBody, false);
+    }
+
+    /**
+     * Answers a create whose key is already taken. The comparison is against
+     * the stored response, not against the request row: the row moves when the
+     * request is amended, and a retry of the original create must still be
+     * recognised as that create rather than told it differs.
+     */
+    private CreateOutcome replay(String key, String caller,
+                                 String applicationId, int discountBps, String reason) {
+        IdempotencyRecord stored = findRecord(key, caller).orElseThrow(() ->
+                // Unreachable: the insert above only fails once the transaction
+                // holding this key has committed. Failing loudly beats
+                // inventing a response for a state that cannot occur.
+                new IllegalStateException(
+                        "Idempotency key '" + key + "' was taken but no record was stored"));
+
+        if (!isSameCreate(stored, applicationId, discountBps, reason)) {
+            throw new KeyReusedException(key);
+        }
+        return new CreateOutcome(stored.requestId(), stored.statusCode(), stored.responseBody(), true);
+    }
+
+    private boolean isSameCreate(IdempotencyRecord stored,
+                                 String applicationId, int discountBps, String reason) {
+        try {
+            // Compared field by field rather than byte by byte: two bodies
+            // differing only in whitespace or field order are the same create.
+            JsonNode original = json.readTree(stored.responseBody());
+            return original.path("applicationId").asText().equals(applicationId)
+                    && original.path("discountBps").asInt() == discountBps
+                    && original.path("reason").asText().equals(reason);
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("Could not read a stored idempotent response", e);
+        }
+    }
+
+    private Optional<IdempotencyRecord> findRecord(String key, String caller) {
+        return db.sql("""
+                SELECT "key", caller, request_id, response_body, status_code, created_at
+                  FROM idempotency_record
+                 WHERE "key" = ? AND caller = ?
+                """)
+                .params(key, caller)
+                .query(ExceptionRequestStore::toRecord)
+                .optional();
     }
 
     @Transactional
@@ -204,12 +292,17 @@ public class ExceptionRequestStore {
     }
 
     private String payload(Map<String, Object> values) {
+        return serialise(values);
+    }
+
+    private String serialise(Object value) {
         try {
-            return json.writeValueAsString(values);
+            return json.writeValueAsString(value);
         } catch (JsonProcessingException e) {
-            // These maps hold only strings and ints, so this cannot fail in
-            // practice. Failing loudly beats storing a broken audit entry.
-            throw new IllegalStateException("Could not serialise a history payload", e);
+            // Records of strings, ints and instants, so this cannot fail in
+            // practice. Failing loudly beats storing a broken audit entry or a
+            // response that cannot be replayed.
+            throw new IllegalStateException("Could not serialise " + value.getClass().getSimpleName(), e);
         }
     }
 
@@ -241,6 +334,16 @@ public class ExceptionRequestStore {
                 rs.getString("actor"),
                 rs.getString("payload"),
                 instantOf(rs.getObject("occurred_at", OffsetDateTime.class)));
+    }
+
+    private static IdempotencyRecord toRecord(ResultSet rs, int rowNum) throws SQLException {
+        return new IdempotencyRecord(
+                rs.getString("key"),
+                rs.getString("caller"),
+                rs.getObject("request_id", UUID.class),
+                rs.getString("response_body"),
+                rs.getInt("status_code"),
+                instantOf(rs.getObject("created_at", OffsetDateTime.class)));
     }
 
     private static Instant instantOf(OffsetDateTime value) {

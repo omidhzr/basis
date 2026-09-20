@@ -16,6 +16,7 @@ public final class RequestLimits {
 
     public static final int MAX_APPLICATION_ID_LENGTH = 64;
     public static final int MAX_IDENTITY_LENGTH = 128;
+    public static final int MAX_IDEMPOTENCY_KEY_LENGTH = 128;
 
     private RequestLimits() {
     }

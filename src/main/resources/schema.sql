@@ -32,3 +32,18 @@ CREATE TABLE IF NOT EXISTS request_history (
 );
 
 CREATE INDEX IF NOT EXISTS idx_request_history_request_id ON request_history (request_id);
+
+-- Idempotent create. The (key, caller) primary key IS the guard: the create
+-- path inserts against it and catches the violation -- see invariant 7. H2 2.x
+-- reserves KEY as a keyword, so the column CLAUDE.md names is quoted rather
+-- than renamed; every statement touching it quotes it too. Scoped by caller so
+-- that two relationship managers generating the same key do not collide.
+CREATE TABLE IF NOT EXISTS idempotency_record (
+    "key"         VARCHAR(128)  NOT NULL,
+    caller        VARCHAR(128)  NOT NULL,
+    request_id    UUID          NOT NULL REFERENCES exception_request (id),
+    response_body VARCHAR(4096) NOT NULL,
+    status_code   INT           NOT NULL,
+    created_at    TIMESTAMP WITH TIME ZONE NOT NULL,
+    PRIMARY KEY ("key", caller)
+);
