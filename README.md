@@ -19,18 +19,18 @@ done. What follows is accurate as of the last commit.
 | Create, amend, decide, withdraw | Built, tested |
 | Version-bound decisions, four-eyes, append-only history | Built, tested |
 | Idempotent create | Built, tested |
-| Every rejection as a problem detail; bounded identity | Built; its integration tests are not written yet |
-| Read endpoints — `GET /requests/{id}`, `GET /requests`, `GET /applications/{id}/approved-exception` | **Not built** |
+| Every rejection as a problem detail; bounded identity | Built, tested |
+| Read endpoints — `GET /requests/{id}`, `GET /requests`, `GET /applications/{id}/approved-exception` | Built, tested |
 | User interface | **Not built** |
 | Seed data, demo scripts | **Not built** |
 
-49 tests, green. Against the acceptance criteria in `CLAUDE.md`: 1–5 are met;
-6 needs the read endpoints; 7–9 need the user interface.
+65 tests, green. Against the acceptance criteria in `CLAUDE.md`: 1–6 are met;
+7–9 need the user interface.
 
-The read endpoints are the most conspicuous gap — the mortgage process has
-nowhere yet to ask what was approved. They are a planned slice, not an
-oversight, and the write path they read from is finished and does not change
-when they are added.
+The service is therefore complete as an API: a request can be raised, amended,
+decided and withdrawn, and the mortgage process can ask what discount applies
+to an application. What is left is people-shaped — a page to work from, seed
+data to open it on, and scripts that walk the scenario end to end.
 
 ---
 
@@ -41,7 +41,7 @@ and the database is in-memory.
 
 ```bash
 ./mvnw spring-boot:run          # http://localhost:8080
-./mvnw test                     # 49 tests
+./mvnw test                     # 65 tests
 ```
 
 Explore the API at <http://localhost:8080/swagger-ui.html>.
@@ -67,6 +67,13 @@ curl -i -X POST http://localhost:8080/requests/{id}/decision \
   -H 'X-User-Id: reviewer-1' -H 'X-User-Role: REVIEWER' \
   -H 'Content-Type: application/json' \
   -d '{"decision":"APPROVE","version":1,"note":"Within delegated authority"}'
+```
+
+Then ask what the mortgage process would ask:
+
+```bash
+curl -s http://localhost:8080/applications/APP-1/approved-exception \
+  -H 'X-User-Id: pricing-service' -H 'X-User-Role: RELATIONSHIP_MANAGER'
 ```
 
 Everything is in memory, so restarting empties it.
@@ -179,6 +186,14 @@ creates at 25 bps, amends to 40, and then retries the original create would
 otherwise be told `422` for the body they first sent. The stored response is
 frozen at creation and is the only record of what was originally submitted.
 
+History is returned newest first, ordered by the version each entry concerned,
+then by time, then by the transition — a decision sorts after the entry it
+reviewed. The last part is not belt and braces: `Instant.now()` is granular to
+a millisecond or worse on some hosts, so an amendment and the decision
+reviewing it can share a timestamp, and without that tiebreaker the trail
+displays in either order. The state machine allows at most one such pair per
+version, which is what makes the order total.
+
 ---
 
 ## API
@@ -193,15 +208,18 @@ is real and tested; authentication is not built.
 | PATCH | `/requests/{id}` | `{discountBps?, reason?, version}` — at least one of the two. Requester only, while `PENDING` |
 | POST | `/requests/{id}/decision` | `{decision, version, note?}`. Reviewer only, not the requester |
 | POST | `/requests/{id}/withdrawal` | `{version}`. Requester only |
+| GET | `/requests/{id}` | Current values and the full history, newest first |
+| GET | `/requests` | The queue for the caller. Reviewer: `PENDING` requests raised by others. Requester: their own, in every state. `?status=` narrows either |
+| GET | `/applications/{id}/approved-exception` | What the mortgage process consumes. `404` when nothing is approved |
 
 | Situation | Code |
 |---|---|
 | Created | `201` + `Location` |
-| Amended, decided, withdrawn | `200` |
+| Read, amended, decided, withdrawn | `200` |
 | Idempotent replay | the original status and body, unchanged |
 | Validation failure, missing or blank `Idempotency-Key` | `400` |
 | Wrong role, or the requester deciding their own request | `403` |
-| Unknown request | `404` |
+| Unknown request, or an application with nothing approved | `404` |
 | Stale version, or an illegal transition | `409` |
 | A key replayed with a different body | `422` |
 
