@@ -36,10 +36,10 @@ request row and its `CREATED` entry.
 Separate session. `@SpringBootTest` with MockMvc against the real H2 schema,
 one test per scenario in the spec delta.
 
-- [ ] 4.1 Replay a create with the same key and body; assert the original status, body and `Location` are returned and that exactly one request and one `CREATED` entry exist — acceptance criterion 2
-- [ ] 4.2 Assert a create with a missing, blank or over-length key is `400` and stores nothing
-- [ ] 4.3 Reuse a key with a different application identifier, a different discount and a different reason in turn; assert `422` for each and that the original request is unchanged. Verify this fails if the comparison drops a field
-- [ ] 4.4 Assert the same key from a different `X-User-Id` creates a request of its own rather than replaying the first caller's
-- [ ] 4.5 Submit two creates carrying the same key from the same caller concurrently, released from a barrier as `ConcurrentAmendmentTest` does; assert exactly one request and one `CREATED` entry exist and that neither caller receives a `5xx`. Verify this fails if the guard is moved out of the constraint
-- [ ] 4.6 Assert a create rejected with `400` or `422` appends no history entry and stores no idempotency record
-- [ ] 4.7 Run `./mvnw test` and confirm the whole suite, including the tests `request-lifecycle` left behind, is green before the change is verified or archived
+- [x] 4.1 Replay a create with the same key and body; assert the original status, body and `Location` are returned and that exactly one request and one `CREATED` entry exist — acceptance criterion 2
+- [x] 4.2 Assert a create with a missing, blank or over-length key is `400` and stores nothing
+- [x] 4.3 Reuse a key with a different application identifier, a different discount and a different reason in turn; assert `422` for each and that the original request is unchanged. Verify this fails if the comparison drops a field
+- [x] 4.4 Assert the same key from a different `X-User-Id` creates a request of its own rather than replaying the first caller's
+- [x] 4.5 Submit two creates carrying the same key from the same caller concurrently, released from a barrier as `ConcurrentAmendmentTest` does; assert exactly one request and one `CREATED` entry exist and that neither caller receives a `5xx`. Verify this fails if the guard is moved out of the constraint
+- [x] 4.6 Assert a create rejected with `400` or `422` appends no history entry and stores no idempotency record
+- [x] 4.7 Run `./mvnw test` and confirm the whole suite, including the tests `request-lifecycle` left behind, is green before the change is verified or archived
