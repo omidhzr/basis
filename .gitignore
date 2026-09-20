@@ -1,0 +1,17 @@
+# Maven build output
+target/
+
+# IDE metadata
+.idea/
+*.iml
+.vscode/
+.settings/
+.classpath
+.project
+
+# OS noise
+.DS_Store
+Thumbs.db
+
+# Runtime logs
+*.log

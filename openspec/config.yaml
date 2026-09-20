@@ -1,0 +1,113 @@
+schema: spec-driven
+
+# Constraints for planning artifacts. Derived from CLAUDE.md — if the two
+# disagree, CLAUDE.md is the source and this file is stale. OpenSpec does not
+# read CLAUDE.md; this field is the only project context its skills load.
+context: |
+  Basis is an internal service for a financial-services client. A relationship
+  manager (RM) requests a discount on the standard mortgage interest rate; an
+  authorised reviewer approves or declines it before the application process may
+  use it. Repository `basis`, Maven artifactId `basis`, root package
+  `com.example.basis`. Keep the client's name out of all of them.
+
+  GUIDING CONSTRAINT — this is graded. The brief asks for a small, clear
+  solution with thoughtful decisions over a broad but fragile implementation.
+  Do not introduce dependencies, layers, or abstractions beyond those listed
+  below. Prefer the fewest moving parts that satisfy the acceptance criteria.
+  Scope discipline is not a shortcut here; breadth is a defect.
+
+  DOMAIN INVARIANTS — no artifact may propose work that breaks one:
+  1. A request in a terminal state (APPROVED, DECLINED, WITHDRAWN) is immutable.
+     No code path mutates one.
+  2. A decision binds to an exact version of the request. Deciding against a
+     stale version is rejected with 409.
+  3. Every state change appends a row to `request_history`. Append-only: never
+     UPDATE or DELETE it.
+  4. The requester may not decide their own request (four-eyes).
+  5. The discount is a positive integer in basis points. Never a float, never
+     negative.
+  6. All timestamps are `Instant`, UTC.
+  7. Guards are enforced in the write, not before it. Version and status checks
+     live inside the statement (UPDATE ... WHERE id = ? AND version = ? AND
+     status = 'PENDING'), and rowsAffected == 0 means 409. Never read-then-compare-in-Java-then-write. Idempotency follows the same rule: insert
+     against the (key, caller) unique constraint and catch the violation;
+     never check-then-insert.
+  If a change appears to require breaking one of these, raise it rather than
+  working around it.
+
+  SETTLED DECISION — the brief's deliberate conflict (RM may amend vs. approval
+  binds to what was reviewed) is already resolved: versioned requests with
+  version-bound decisions. Amend only while PENDING, each amendment increments
+  version; the reviewer submits the version reviewed; mismatch is 409 and
+  re-review. After a decision the request is terminal. Supersession is
+  deliberately not modelled — the approved request with the most recent
+  `decided_at` applies. This is settled. Do not re-open it or propose
+  alternatives.
+
+  FIXED TECHNOLOGY — Java 17, Spring Boot 3, JdbcClient + H2 in-memory with
+  schema.sql, Maven wrapper, springdoc-openapi, ProblemDetail (RFC 7807) via one
+  @RestControllerAdvice, JUnit 5 + AssertJ + MockMvc, and a single static page
+  of plain JavaScript with vendored Pico.css. These are chosen and settled.
+
+  DELIBERATELY NOT USED — JPA/Hibernate, Lombok, Spring Security, messaging,
+  Flyway, Testcontainers, and any JavaScript framework. Treat each as excluded,
+  not as an open question.
+
+  OUT OF SCOPE — do not plan work for real authentication (OIDC/Entra ID),
+  Postgres + Flyway, Testcontainers, transactional-outbox event publishing,
+  a persistent idempotency store with TTL, or observability. These are recorded
+  in the README as omissions.
+
+  Identity is stubbed: `X-User-Id` and `X-User-Role` headers stand in for JWT
+  claims. Authorisation is real and tested; authentication is not built.
+
+rules:
+  proposal:
+    - >-
+        Prefer the fewest capabilities that cover the behaviour. Do not split one coherent service into many near-duplicate capabilities.
+    - >-
+        Do not invent a requirement to satisfy validation. If nothing at spec level changes, say so.
+    - >-
+        Impact must name only technology already listed in context. A proposal that requires a new dependency is wrong unless the user asked for it.
+
+  specs:
+    - >-
+        Use the exact enumerations from the project: X-User-Role is RELATIONSHIP_MANAGER or REVIEWER; status is PENDING, APPROVED, DECLINED, WITHDRAWN; entry_type is CREATED, AMENDED, APPROVED, DECLINED, WITHDRAWN; decision is APPROVE or DECLINE. No synonyms, abbreviations or lower-case variants.
+    - >-
+        Scenarios state observable HTTP behaviour including the status code. Stale version and illegal transition are 409; four-eyes and missing role are 403; validation failure is 400; replay with a different body is 422.
+    - >-
+        Keep specs to externally observable behaviour. No class names, no SQL, no framework detail — those belong in design.
+
+  design:
+    - >-
+        The technology table, the deliberately-not-used list, and the versioned-request resolution are settled. Do not list alternatives to them or reconsider them under "Decisions".
+    - >-
+        Decisions cover only what is genuinely open for this change. If a section would restate CLAUDE.md, point to it instead.
+    - >-
+        Do not introduce a layer (service/repository/mapper/DTO seam) unless the change cannot be expressed without it, and state why in that case.
+    - >-
+        Risks are real operational risks — concurrency, audit integrity, the 409 rate — not process risk.
+
+  tasks:
+    - >-
+        No task may add a dependency, a module, or an abstraction not already in context. If one seems necessary, stop and ask.
+    - >-
+        The UI is built last, after the API and its tests are green.
+    - >-
+        Do not pair a test task with its implementation task in a way that invites writing both in one pass. Implement against the acceptance criterion, then review the test against that criterion separately.
+    - >-
+        Each task names its verification — a test, a command, or an observable response.
+
+operations:
+  apply:
+    guidance:
+      - >-
+          Enforce guards in the write. A task that seems to need a read-then-write is a signal to re-read invariant 7.
+      - >-
+          Commit in small steps with honest messages; the history is reviewed.
+      - >-
+          Comments explain why, not what.
+  archive:
+    guidance:
+      - >-
+          Confirm the README records the assumptions and deliberate omissions before archiving.

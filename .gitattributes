@@ -1,0 +1,16 @@
+# Content is stored and checked out as LF on every machine, so the bytes a
+# reviewer sees are the bytes that were committed. This overrides the local
+# core.autocrlf=true, which would otherwise rewrite the working copy per user.
+* text=auto eol=lf
+
+# Windows-native scripts are the exception: they need CRLF to run reliably.
+*.ps1 text eol=crlf
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# Never normalise. The Maven wrapper jar in particular is committed, not
+# ignored, so that a clean checkout runs with only a JDK present.
+*.jar   binary
+*.png   binary
+*.ico   binary
+*.woff2 binary
