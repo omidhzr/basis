@@ -19,31 +19,31 @@ Acceptance criteria 2 and 6 belong to later slices (idempotency, queries), and
 
 Pure Java, no Spring context, no database. These are what group 5 tests.
 
-- [ ] 2.1 Add the `status` and `entry_type` enumerations using exactly the values in CLAUDE.md's enumeration table. Verify no synonym, abbreviation or lower-case variant appears in the source
-- [ ] 2.2 Add the request record carrying current state, and a function answering which transitions are legal from a given status. Verify every transition in CLAUDE.md's state machine is accepted and every other is refused
-- [ ] 2.3 Add the four-eyes rule, the reviewer role check and the ownership checks for amend and withdrawal as pure functions returning the reason for refusal. Verify each returns a refusal a caller could act on
-- [ ] 2.4 Add the discount bound 1–200 as a named constant. Verify it is referenced by validation rather than repeated as a literal
+- [x] 2.1 Add the `status` and `entry_type` enumerations using exactly the values in CLAUDE.md's enumeration table. Verify no synonym, abbreviation or lower-case variant appears in the source
+- [x] 2.2 Add the request record carrying current state, and a function answering which transitions are legal from a given status. Verify every transition in CLAUDE.md's state machine is accepted and every other is refused
+- [x] 2.3 Add the four-eyes rule, the reviewer role check and the ownership checks for amend and withdrawal as pure functions returning the reason for refusal. Verify each returns a refusal a caller could act on
+- [x] 2.4 Add the discount bound 1–200 as a named constant. Verify it is referenced by validation rather than repeated as a literal
 
 ## 3. Persistence
 
 Each task is one transactional unit: the guarded write and its history entry
 commit together or not at all.
 
-- [ ] 3.1 Insert a new request as `PENDING` at version 1 and append its `CREATED` history entry in one transaction. Verify a created request and its entry are both present, satisfying acceptance criterion 1
-- [ ] 3.2 Amend with the version and status guards inside the `UPDATE` statement, appending `AMENDED` and incrementing version. Verify `rowsAffected == 0` when the submitted version is not current, satisfying acceptance criterion 3
-- [ ] 3.3 Decide with the same guarded form, appending `APPROVED` or `DECLINED`, recording the deciding user, the decision time and any note. Verify the outcome records who and when, satisfying acceptance criterion 4
-- [ ] 3.4 Withdraw with the same guarded form, appending `WITHDRAWN`. Verify a withdrawn request is terminal afterwards
-- [ ] 3.5 Classify a failed guarded write by re-reading the row: absent is `404`, otherwise `409` carrying the current version. Verify the re-read influences only the message, never whether the write proceeds
+- [x] 3.1 Insert a new request as `PENDING` at version 1 and append its `CREATED` history entry in one transaction. Verify a created request and its entry are both present, satisfying acceptance criterion 1
+- [x] 3.2 Amend with the version and status guards inside the `UPDATE` statement, appending `AMENDED` and incrementing version. Verify `rowsAffected == 0` when the submitted version is not current, satisfying acceptance criterion 3
+- [x] 3.3 Decide with the same guarded form, appending `APPROVED` or `DECLINED`, recording the deciding user, the decision time and any note. Verify the outcome records who and when, satisfying acceptance criterion 4
+- [x] 3.4 Withdraw with the same guarded form, appending `WITHDRAWN`. Verify a withdrawn request is terminal afterwards
+- [x] 3.5 Classify a failed guarded write by re-reading the row: absent is `404`, otherwise `409` carrying the current version. Verify the re-read influences only the message, never whether the write proceeds
 
 ## 4. HTTP surface
 
-- [ ] 4.1 Add request and response records with Bean Validation annotations taken from CLAUDE.md's validation table. Verify each bound rejects a value outside it with `400`
-- [ ] 4.2 `POST /requests`. Verify `201` with a `Location` header naming the new request, satisfying acceptance criterion 1
-- [ ] 4.3 `PATCH /requests/{id}`. Verify `200` on the current version, `409` on a stale one, `403` for a caller who did not raise it, satisfying acceptance criterion 3
-- [ ] 4.4 `POST /requests/{id}/decision`. Verify `200` for a reviewer on the current version, `409` on a stale one, `403` without the reviewer role, satisfying acceptance criterion 4
-- [ ] 4.5 `POST /requests/{id}/withdrawal`. Verify `200` for the requester and `403` for anyone else
-- [ ] 4.6 Add one `@RestControllerAdvice` producing RFC 7807 problem details for `400`, `403`, `404` and `409`. Verify a stale-version rejection states the current version in its detail
-- [ ] 4.7 Read identity from the `X-User-Id` and `X-User-Role` headers at each call site, with a comment recording that these stand in for JWT claims. Verify no authentication machinery is introduced
+- [x] 4.1 Add request and response records with Bean Validation annotations taken from CLAUDE.md's validation table. Verify each bound rejects a value outside it with `400`
+- [x] 4.2 `POST /requests`. Verify `201` with a `Location` header naming the new request, satisfying acceptance criterion 1
+- [x] 4.3 `PATCH /requests/{id}`. Verify `200` on the current version, `409` on a stale one, `403` for a caller who did not raise it, satisfying acceptance criterion 3
+- [x] 4.4 `POST /requests/{id}/decision`. Verify `200` for a reviewer on the current version, `409` on a stale one, `403` without the reviewer role, satisfying acceptance criterion 4
+- [x] 4.5 `POST /requests/{id}/withdrawal`. Verify `200` for the requester and `403` for anyone else
+- [x] 4.6 Add one `@RestControllerAdvice` producing RFC 7807 problem details for `400`, `403`, `404` and `409`. Verify a stale-version rejection states the current version in its detail
+- [x] 4.7 Read identity from the `X-User-Id` and `X-User-Role` headers at each call site, with a comment recording that these stand in for JWT claims. Verify no authentication machinery is introduced
 
 ## 5. Verification — domain unit tests
 
