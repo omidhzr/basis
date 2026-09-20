@@ -11,9 +11,9 @@ Acceptance criteria 2 and 6 belong to later slices (idempotency, queries), and
 
 ## 1. Project skeleton
 
-- [ ] 1.1 Create the Maven project: `pom.xml` and the Maven wrapper, Java 17, Spring Boot 3 with web, jdbc and validation, H2 and springdoc-openapi. Verify `./mvnw -q package` succeeds on a clean checkout with only a JDK present
-- [ ] 1.2 Add the application entry point under `com.example.basis`. Verify the service starts and `/swagger-ui.html` responds
-- [ ] 1.3 Add `schema.sql` creating `exception_request` and `request_history` with the columns named in CLAUDE.md's data model. Verify the service starts against the schema and both tables accept an insert. No `idempotency_record` — that table belongs to the idempotency slice
+- [x] 1.1 Create the Maven project: `pom.xml` and the Maven wrapper, Java 17, Spring Boot 3 with web, jdbc and validation, H2 and springdoc-openapi. Verify `./mvnw -q package` succeeds on a clean checkout with only a JDK present
+- [x] 1.2 Add the application entry point under `com.example.basis`. Verify the service starts and `/swagger-ui.html` responds
+- [x] 1.3 Add `schema.sql` creating `exception_request` and `request_history` with the columns named in CLAUDE.md's data model. Verify the service starts against the schema and both tables accept an insert. No `idempotency_record` — that table belongs to the idempotency slice
 
 ## 2. Domain types and rules
 

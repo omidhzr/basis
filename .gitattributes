@@ -8,8 +8,9 @@
 *.cmd text eol=crlf
 *.bat text eol=crlf
 
-# Never normalise. The Maven wrapper jar in particular is committed, not
-# ignored, so that a clean checkout runs with only a JDK present.
+# Never normalise these. The Maven wrapper uses the only-script distribution,
+# so there is no wrapper jar: mvnw fetches Maven itself on first run, and a
+# clean checkout still needs nothing but a JDK.
 *.jar   binary
 *.png   binary
 *.ico   binary
