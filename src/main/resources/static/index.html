@@ -19,6 +19,24 @@
       <li><a href="#new">New request</a></li>
     </ul>
   </nav>
+
+  <!-- Stands in for the claims a JWT would carry. Switching it is how the
+       workflow is demonstrated: the queue changes, not just the buttons. -->
+  <form id="identity" novalidate>
+    <fieldset role="group">
+      <input id="user-id" list="known-users" aria-label="User identifier" autocomplete="off">
+      <select id="role" aria-label="Role">
+        <option value="RELATIONSHIP_MANAGER">RELATIONSHIP_MANAGER</option>
+        <option value="REVIEWER">REVIEWER</option>
+      </select>
+    </fieldset>
+    <datalist id="known-users">
+      <option value="rm-1"></option>
+      <option value="rm-2"></option>
+      <option value="reviewer-1"></option>
+      <option value="reviewer-2"></option>
+    </datalist>
+  </form>
 </header>
 
 <main>
@@ -61,7 +79,26 @@ function el(tag, attrs, ...children) {
 
 // Identity is a stand-in for the claims a JWT would carry; nothing verifies it.
 // It travels as headers on every call, from one place, so no call can forget it.
-let identity = { id: 'rm-1', role: 'RELATIONSHIP_MANAGER' };
+// Kept per tab, not per browser, so two tabs can be two different people -- which
+// is how a stale decision is shown to someone -- and tolerant of storage being
+// refused, in which case the default is simply not remembered.
+const DEFAULT_IDENTITY = { id: 'rm-1', role: 'RELATIONSHIP_MANAGER' };
+
+function loadIdentity() {
+  try {
+    const stored = JSON.parse(sessionStorage.getItem('identity'));
+    if (stored && typeof stored.id === 'string' && ['RELATIONSHIP_MANAGER', 'REVIEWER'].includes(stored.role)) {
+      return stored;
+    }
+  } catch { /* storage refused or unreadable: fall through to the default */ }
+  return { ...DEFAULT_IDENTITY };
+}
+
+function saveIdentity() {
+  try { sessionStorage.setItem('identity', JSON.stringify(identity)); } catch { /* not remembered */ }
+}
+
+let identity = loadIdentity();
 
 // Never throws: a call that fails before any response exists comes back with
 // status 0 and the browser's own message, since there is no problem detail to
@@ -114,7 +151,72 @@ function show(name) {
   }
 }
 
-show('queue');
+// Instants arrive as UTC ISO-8601. Reformatting the string, rather than building
+// a Date, keeps the page from converting to the viewer's zone, which would make
+// one history read differently on two machines.
+function fmtTime(instant) {
+  return instant ? instant.slice(0, 10) + ' ' + instant.slice(11, 16) + ' UTC' : '';
+}
+
+// Whole hundredths, not floating-point division: the stored value is an integer
+// and its rendering should not be a float either.
+function fmtDiscount(bps) {
+  return bps + ' bp (' + Math.floor(bps / 100) + '.' + String(bps % 100).padStart(2, '0') + ' percentage points)';
+}
+
+// A navigation that has been overtaken -- the identity switched, a link followed
+// -- must not paint over the one that replaced it when its response arrives late.
+let navigation = 0;
+
+async function showQueue() {
+  const mine = ++navigation;
+  show('queue');
+  const result = await call('GET', '/requests');
+  if (mine !== navigation) return;
+  const section = document.getElementById('queue');
+  const heading = section.querySelector('h2');
+  if (!result.ok) {
+    showProblem(result);
+    section.replaceChildren(heading);
+    return;
+  }
+  section.replaceChildren(heading, queueTable(result.body));
+}
+
+function queueTable(rows) {
+  if (rows.length === 0) return el('p', {}, 'Nothing to show.');
+  const columns = ['Application', 'Discount', 'Reason', 'Requested by', 'Status', 'Submitted', 'Version'];
+  return el('table', {},
+    el('thead', {}, el('tr', {}, columns.map((name) => el('th', { scope: 'col' }, name)))),
+    el('tbody', {}, rows.map((row) => el('tr', {},
+      el('td', {}, el('a', { href: '#' + row.id }, row.applicationId)),
+      el('td', {}, fmtDiscount(row.discountBps)),
+      el('td', {}, row.reason),
+      el('td', {}, row.requestedBy),
+      el('td', {}, row.status),
+      el('td', {}, fmtTime(row.createdAt)),
+      el('td', {}, row.version)))));
+}
+
+function route() {
+  clearNotice();
+  showQueue();
+}
+
+const userIdField = document.getElementById('user-id');
+const roleField = document.getElementById('role');
+userIdField.value = identity.id;
+roleField.value = identity.role;
+
+// Enter in the user field would otherwise submit the form and reload the page.
+document.getElementById('identity').addEventListener('submit', (event) => event.preventDefault());
+document.getElementById('identity').addEventListener('change', () => {
+  identity = { id: userIdField.value, role: roleField.value };
+  saveIdentity();
+  route();
+});
+
+route();
 </script>
 </body>
 </html>

@@ -20,8 +20,8 @@ seen through.
 
 ## 2. Identity and the queue
 
-- [ ] 2.1 Add the identity switcher: user-id field with a `<datalist>` of `rm-1`, `rm-2`, `reviewer-1`, `reviewer-2`, a role select of `RELATIONSHIP_MANAGER` and `REVIEWER`, held in `sessionStorage` behind try/catch, defaulting to `rm-1` as `RELATIONSHIP_MANAGER`, re-reading the queue on change. Verify in the browser's network panel that every call carries `X-User-Id` and `X-User-Role` matching the switcher, and that the page still works with storage blocked
-- [ ] 2.2 Render the queue from `GET /requests`: application, discount as `N bp` beside `N/100 percentage points` (integer arithmetic), reason, requester, status, submitted time as `YYYY-MM-DD HH:MM UTC` from the returned string, version; each row opens the detail. Verify as `reviewer-1` the queue is `APP-2003` and `APP-2004` and not `APP-2005`, as `reviewer-2` it also holds `APP-2005`, as `rm-2` it is `APP-2002` and `APP-2003`, and `25` shows as `25 bp` beside `0.25 percentage points`
+- [x] 2.1 Add the identity switcher: user-id field with a `<datalist>` of `rm-1`, `rm-2`, `reviewer-1`, `reviewer-2`, a role select of `RELATIONSHIP_MANAGER` and `REVIEWER`, held in `sessionStorage` behind try/catch, defaulting to `rm-1` as `RELATIONSHIP_MANAGER`, re-reading the queue on change. Verify in the browser's network panel that every call carries `X-User-Id` and `X-User-Role` matching the switcher, and that the page still works with storage blocked
+- [x] 2.2 Render the queue from `GET /requests`: application, discount as `N bp` beside `N/100 percentage points` (integer arithmetic), reason, requester, status, submitted time as `YYYY-MM-DD HH:MM UTC` from the returned string, version; each row opens the detail. Verify as `reviewer-1` the queue is `APP-2003` and `APP-2004` and not `APP-2005`, as `reviewer-2` it also holds `APP-2005`, as `rm-2` it is `APP-2002` and `APP-2003`, and `25` shows as `25 bp` beside `0.25 percentage points`
 
 ## 3. The detail view
 
