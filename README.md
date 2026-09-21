@@ -22,9 +22,9 @@ done. What follows is accurate as of the last commit.
 | Every rejection as a problem detail; bounded identity | Built, tested |
 | Read endpoints — `GET /requests/{id}`, `GET /requests`, `GET /applications/{id}/approved-exception` | Built, tested |
 | User interface | **Not built** |
-| Seed data (dev profile), `scripts/demo.sh` and `scripts/demo.ps1` | Built. The scripts are verified by running them, not by the suite — they need a running service. The seed fixture's tests are not written yet |
+| Seed data (dev profile), `scripts/demo.sh` and `scripts/demo.ps1` | Built. The seed is tested: absent under the default profile, and checked against the domain invariants under `dev`. The scripts are verified by running them, not by the suite — they need a running service |
 
-65 tests, green. Against the acceptance criteria in `CLAUDE.md`: 1–6 are met;
+72 tests, green. Against the acceptance criteria in `CLAUDE.md`: 1–6 are met;
 7–9 need the user interface.
 
 The service is therefore complete as an API: a request can be raised, amended,
@@ -42,7 +42,7 @@ and the database is in-memory.
 ```bash
 ./mvnw spring-boot:run                                     # http://localhost:8080, starts empty
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev      # the same, with demonstration data
-./mvnw test                                                # 65 tests
+./mvnw test                                                # 72 tests
 ```
 
 Explore the API at <http://localhost:8080/swagger-ui.html>.
