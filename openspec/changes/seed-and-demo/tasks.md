@@ -25,8 +25,8 @@ worth nothing until something loads it.
 
 ## 3. The demo scripts
 
-- [ ] 3.1 Write `scripts/demo.sh`: the eight steps in design.md, each narrating the status it expects, printing what came back, and exiting non-zero on a mismatch. `curl` and POSIX tools only, no `jq`. A unique application identifier and one `Idempotency-Key` per run. Verify by running it against a service started with no profile and again with `dev`
-- [ ] 3.2 Commit `demo.sh` with the executable bit set. Verify `git ls-files -s scripts/demo.sh` reports mode `100755`, and that `.gitattributes` already gives it LF without a change to that file
+- [x] 3.1 Write `scripts/demo.sh`: the eight steps in design.md, each narrating the status it expects, printing what came back, and exiting non-zero on a mismatch. `curl` and POSIX tools only, no `jq`. A unique application identifier and one `Idempotency-Key` per run. Verify by running it against a service started with no profile and again with `dev`
+- [x] 3.2 Commit `demo.sh` with the executable bit set. Verify `git ls-files -s scripts/demo.sh` reports mode `100755`, and that `.gitattributes` already gives it LF without a change to that file
 - [ ] 3.3 Write `scripts/demo.ps1`: the same eight steps, the same narration, the same order, using `Invoke-RestMethod` with the helper that reads a 4xx's status and problem detail on Windows PowerShell 5.1. Verify by running it on 5.1 and confirming the `409` and `403` steps report their status rather than throwing
 - [ ] 3.4 Read the two scripts side by side and confirm they narrate the same scenario in the same words. Verify the step count, the order and the expected statuses match line for line
 
