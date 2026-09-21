@@ -25,7 +25,7 @@ seen through.
 
 ## 3. The detail view
 
-- [ ] 3.1 Render the detail from `GET /requests/{id}`: current values, then the history newest first with version, entry type, actor, UTC time and the payload's discount, reason or note. Hold the id in the URL fragment so a request can be opened directly, and return to the queue from the back button. Verify `APP-2003` lists its `AMENDED` entry at version 2 before its `CREATED` entry at version 1, that `/#5eed0000-0000-4000-8000-000000000005` opens as `reviewer-1` although it is not in that queue, and that an unknown identifier shows the service's `404` title and detail
+- [x] 3.1 Render the detail from `GET /requests/{id}`: current values, then the history newest first with version, entry type, actor, UTC time and the payload's discount, reason or note. Hold the id in the URL fragment so a request can be opened directly, and return to the queue from the back button. Verify `APP-2003` lists its `AMENDED` entry at version 2 before its `CREATED` entry at version 1, that `/#5eed0000-0000-4000-8000-000000000005` opens as `reviewer-1` although it is not in that queue, and that an unknown identifier shows the service's `404` title and detail
 - [ ] 3.2 Decide which actions are offered from the role, the status and `requestedBy` compared with the identity, in one function: decision panel to a `REVIEWER` on a `PENDING` request they did not raise; amend and withdraw to a `RELATIONSHIP_MANAGER` on a `PENDING` request they did raise; nothing on a terminal request. Verify `reviewer-1` sees the panel on `APP-2004` and no approve or decline control on `APP-2005`; `rm-1` sees amend and withdraw on `APP-2004` and neither on `APP-2003`; `APP-2001` and `APP-2002` offer nothing to anyone
 
 ## 4. The actions

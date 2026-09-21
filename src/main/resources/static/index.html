@@ -198,10 +198,91 @@ function queueTable(rows) {
       el('td', {}, row.version)))));
 }
 
+// The request on show, exactly as the service returned it. Every action reads
+// its version from here, so what is submitted is what was displayed.
+let shown = null;
+
+const backToQueue = () => el('p', {}, el('a', { href: '#' }, '← Queue'));
+
+async function showDetail(id) {
+  const mine = ++navigation;
+  show('detail');
+  const section = document.getElementById('detail');
+  const result = await call('GET', '/requests/' + encodeURIComponent(id));
+  if (mine !== navigation) return;
+  if (!result.ok) {
+    shown = null;
+    showProblem(result);
+    section.replaceChildren(backToQueue());
+    return;
+  }
+  shown = result.body;
+  section.replaceChildren(...detailView(shown));
+}
+
+function detailView({ request, history }) {
+  const facts = [
+    ['Status', request.status],
+    ['Discount', fmtDiscount(request.discountBps)],
+    ['Reason', request.reason],
+    ['Requested by', request.requestedBy],
+    ['Version', request.version],
+    ['Submitted', fmtTime(request.createdAt)],
+    ['Last updated', fmtTime(request.updatedAt)],
+  ];
+  if (request.decidedBy) {
+    facts.push(['Decided by', request.decidedBy], ['Decided at', fmtTime(request.decidedAt)]);
+  }
+  return [
+    backToQueue(),
+    el('h2', {}, request.applicationId),
+    el('dl', {}, facts.flatMap(([name, value]) => [el('dt', {}, name), el('dd', {}, value)])),
+    el('div', { id: 'actions' }),
+    el('h3', {}, 'History'),
+    // As returned: the service orders it newest first, so the page does not sort.
+    el('ol', {}, history.map(historyEntry)),
+  ];
+}
+
+// What an entry carried: the discount and reason for a creation or amendment
+// (an amendment only the fields it changed), the note for a decision.
+function historyEntry(entry) {
+  const carried = entry.payload || {};
+  const lines = [];
+  if (carried.discountBps != null) lines.push('Discount: ' + fmtDiscount(carried.discountBps));
+  if (carried.reason != null) lines.push('Reason: ' + carried.reason);
+  if (carried.note != null) lines.push('Note: ' + carried.note);
+  return el('li', {},
+    el('strong', {}, entry.entryType),
+    ' — version ' + entry.version + ' — ' + entry.actor + ' — ' + fmtTime(entry.occurredAt),
+    lines.map((line) => el('div', {}, el('small', {}, line))));
+}
+
+// The fragment holds the request id while a detail is open, so a request can be
+// linked to and reached directly, and the back button returns to the queue.
 function route() {
   clearNotice();
-  showQueue();
+  const target = location.hash.slice(1);
+  if (target === 'new') {
+    navigation++;
+    show('create');
+  } else if (target) {
+    showDetail(target);
+  } else {
+    showQueue();
+  }
 }
+
+window.addEventListener('hashchange', route);
+// Following "Queue" from the queue would only append an empty fragment, which
+// fires a hashchange of its own; reading the queue here and stopping the
+// navigation gives one read and leaves the address clean.
+document.getElementById('to-queue').addEventListener('click', (event) => {
+  if (!location.hash) {
+    event.preventDefault();
+    route();
+  }
+});
 
 const userIdField = document.getElementById('user-id');
 const roleField = document.getElementById('role');
