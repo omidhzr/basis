@@ -327,19 +327,25 @@ async function withdraw(event) {
     { version: shown.request.version }));
 }
 
+// A double click is one call. It would be safe anyway where an idempotency key
+// covers it, but the other writes have no key and should not depend on luck.
+function setBusy(form, busy) {
+  for (const button of form.querySelectorAll('button')) button.disabled = busy;
+}
+
 // Runs a write; on success re-reads the request so the values and the history on
 // screen come from one response, on failure leaves the form as typed and says
 // why in the service's words.
 async function act(form, write) {
   const id = shown.request.id;
-  for (const button of form.querySelectorAll('button')) button.disabled = true;
+  setBusy(form, true);
   const result = await write();
   if (result.ok) {
     clearNotice();
     await showDetail(id);
     return;
   }
-  for (const button of form.querySelectorAll('button')) button.disabled = false;
+  setBusy(form, false);
   if (result.status === 409) explainConflict(result, id);
   else showProblem(result);
 }
@@ -379,12 +385,60 @@ function historyEntry(entry) {
 
 // The fragment holds the request id while a detail is open, so a request can be
 // linked to and reached directly, and the back button returns to the queue.
+// Made once when the form is opened and sent on every attempt to submit it, so a
+// retry is a replay. Regenerating it per click would defeat the mechanism from
+// the client's side. Dropped when the form is left, so the next opening is a new
+// request; built from getRandomValues because randomUUID exists only in secure
+// contexts, and the page may be opened by a machine's address over plain HTTP.
+let createKey = null;
+
+function newKey() {
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  bytes[6] = (bytes[6] & 0x0f) | 0x40; // version 4
+  bytes[8] = (bytes[8] & 0x3f) | 0x80; // RFC 4122 variant
+  const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+  return [hex.slice(0, 8), hex.slice(8, 12), hex.slice(12, 16), hex.slice(16, 20), hex.slice(20)].join('-');
+}
+
+function openCreate() {
+  navigation++;
+  createKey = newKey();
+  show('create');
+  // No bound is written into the form: the service checks every field and says
+  // what is wrong in its own words.
+  document.getElementById('create').replaceChildren(
+    el('h2', {}, 'New request'),
+    el('form', { novalidate: true, onsubmit: create },
+      el('label', {}, 'Application identifier', el('input', { name: 'applicationId', autocomplete: 'off' })),
+      el('label', {}, 'Discount in basis points', el('input', { type: 'number', name: 'discountBps' })),
+      el('label', {}, 'Reason', el('textarea', { name: 'reason', rows: '4' })),
+      el('button', { type: 'submit' }, 'Create request')));
+}
+
+async function create(event) {
+  event.preventDefault();
+  const form = event.target;
+  // An empty number is left out of the body; anything else is sent as typed, so
+  // the service, not the browser, decides what is wrong with it.
+  const body = { applicationId: form.elements.applicationId.value, reason: form.elements.reason.value };
+  if (form.elements.discountBps.value !== '') body.discountBps = Number(form.elements.discountBps.value);
+  setBusy(form, true);
+  const result = await call('POST', '/requests', body, { 'Idempotency-Key': createKey });
+  if (result.ok) {
+    clearNotice();
+    location.hash = result.body.id;
+    return;
+  }
+  setBusy(form, false);
+  showProblem(result);
+}
+
 function route() {
   clearNotice();
   const target = location.hash.slice(1);
+  if (target !== 'new') createKey = null;
   if (target === 'new') {
-    navigation++;
-    show('create');
+    openCreate();
   } else if (target) {
     showDetail(target);
   } else {
@@ -413,7 +467,9 @@ document.getElementById('identity').addEventListener('submit', (event) => event.
 document.getElementById('identity').addEventListener('change', () => {
   identity = { id: userIdField.value, role: roleField.value };
   saveIdentity();
-  route();
+  // A half-written form is not thrown away, and its key not replaced, because
+  // the caller changed; the key is the caller's own on the service side anyway.
+  if (location.hash !== '#new') route();
 });
 
 route();
