@@ -265,6 +265,8 @@ function actionsView(request) {
   const allowed = offered(request);
   return [
     allowed.decide && decisionPanel(request),
+    allowed.amend && amendForm(request),
+    allowed.withdraw && withdrawForm(),
   ].filter(Boolean);
 }
 
@@ -286,6 +288,43 @@ async function decide(event) {
   const body = { decision: event.submitter.value, version: shown.request.version };
   if (form.elements.note.value !== '') body.note = form.elements.note.value;
   await act(form, () => call('POST', '/requests/' + shown.request.id + '/decision', body));
+}
+
+function amendForm(request) {
+  return el('form', { novalidate: true, onsubmit: amend },
+    el('h3', {}, 'Amend'),
+    el('p', {}, 'This amendment is made to version ' + request.version + '.'),
+    el('label', {}, 'Discount in basis points',
+      el('input', { type: 'number', name: 'discountBps', value: request.discountBps })),
+    el('label', {}, 'Reason', el('textarea', { name: 'reason', rows: '3' }, request.reason)),
+    el('button', { type: 'submit' }, 'Amend'));
+}
+
+async function amend(event) {
+  event.preventDefault();
+  const form = event.target;
+  const current = shown.request;
+  // The displayed version, so two open windows cannot silently overwrite each
+  // other, and only the fields that differ from what is displayed: an amendment
+  // that changes nothing is then the service's to refuse, not a version bump
+  // that alters nothing yet invalidates a decision under review.
+  const body = { version: current.version };
+  const discount = form.elements.discountBps.value;
+  if (discount !== '' && discount !== String(current.discountBps)) body.discountBps = Number(discount);
+  if (form.elements.reason.value !== current.reason) body.reason = form.elements.reason.value;
+  await act(form, () => call('PATCH', '/requests/' + current.id, body));
+}
+
+function withdrawForm() {
+  return el('form', { novalidate: true, onsubmit: withdraw },
+    el('h3', {}, 'Withdraw'),
+    el('button', { type: 'submit' }, 'Withdraw this request'));
+}
+
+async function withdraw(event) {
+  event.preventDefault();
+  await act(event.target, () => call('POST', '/requests/' + shown.request.id + '/withdrawal',
+    { version: shown.request.version }));
 }
 
 // Runs a write; on success re-reads the request so the values and the history on
