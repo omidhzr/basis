@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Basis</title>
+<!-- An empty inline icon, so the browser does not ask the service for a favicon it lacks. -->
+<link rel="icon" href="data:,">
+<!-- Vendored, not loaded from a CDN: the page must render with no network. -->
+<link rel="stylesheet" href="vendor/pico.classless.min.css">
+</head>
+<body>
+
+<header>
+  <h1>Basis</h1>
+  <nav>
+    <ul>
+      <li><a href="#" id="to-queue">Queue</a></li>
+      <li><a href="#new">New request</a></li>
+    </ul>
+  </nav>
+</header>
+
+<main>
+  <div id="notice" role="alert"></div>
+
+  <section id="queue" hidden>
+    <h2>Queue</h2>
+  </section>
+
+  <section id="detail" hidden>
+  </section>
+
+  <section id="create" hidden>
+    <h2>New request</h2>
+  </section>
+</main>
+
+<script>
+'use strict';
+
+// This page is a thin client over the JSON API. It holds no business rule the
+// API does not also enforce: every bound, every transition and every refusal
+// comes from the service, and what the service says is what is shown.
+
+// Builds an element from data without any path that parses markup. Every value
+// a user wrote -- a reason, a note, an identity -- reaches the page through a
+// text node, so none of it can become script.
+function el(tag, attrs, ...children) {
+  const node = document.createElement(tag);
+  for (const [name, value] of Object.entries(attrs || {})) {
+    if (name.startsWith('on')) node.addEventListener(name.slice(2), value);
+    else if (value === true) node.setAttribute(name, '');
+    else if (value !== false && value != null) node.setAttribute(name, value);
+  }
+  for (const child of children.flat()) {
+    node.append(child instanceof Node ? child : String(child ?? ''));
+  }
+  return node;
+}
+
+// Identity is a stand-in for the claims a JWT would carry; nothing verifies it.
+// It travels as headers on every call, from one place, so no call can forget it.
+let identity = { id: 'rm-1', role: 'RELATIONSHIP_MANAGER' };
+
+// Never throws: a call that fails before any response exists comes back with
+// status 0 and the browser's own message, since there is no problem detail to
+// show and inventing wording is what this page must not do.
+async function call(method, path, body, extraHeaders) {
+  const headers = { 'X-User-Id': identity.id, 'X-User-Role': identity.role, ...extraHeaders };
+  if (body !== undefined) headers['Content-Type'] = 'application/json';
+  try {
+    const response = await fetch(path, {
+      method,
+      headers,
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    const text = await response.text();
+    let parsed = null;
+    try { parsed = text ? JSON.parse(text) : null; } catch { /* not JSON */ }
+    return { ok: response.ok, status: response.status, statusText: response.statusText, body: parsed };
+  } catch (failure) {
+    return { ok: false, status: 0, failure: failure.message };
+  }
+}
+
+const notice = document.getElementById('notice');
+
+function clearNotice() {
+  notice.replaceChildren();
+}
+
+// The one place a refusal is rendered: the service's title and detail, as sent.
+function showProblem(result) {
+  if (result.failure !== undefined) {
+    notice.replaceChildren(el('article', {}, el('p', {}, result.failure)));
+    return;
+  }
+  const problem = result.body;
+  if (problem && (problem.title || problem.detail)) {
+    notice.replaceChildren(el('article', {},
+      el('h3', {}, problem.title),
+      el('p', {}, problem.detail),
+      el('small', {}, 'HTTP ' + result.status)));
+  } else {
+    notice.replaceChildren(el('article', {}, el('p', {}, result.status + ' ' + result.statusText)));
+  }
+}
+
+// One section is shown at a time, toggled by state rather than routed.
+function show(name) {
+  for (const id of ['queue', 'detail', 'create']) {
+    document.getElementById(id).hidden = id !== name;
+  }
+}
+
+show('queue');
+</script>
+</body>
+</html>

@@ -16,7 +16,7 @@ Done first because every later task needs somewhere to live and something to be
 seen through.
 
 - [x] 1.1 Fetch Pico.css once, at a pinned 2.x release, and commit `static/vendor/pico.classless.min.css` with its MIT licence beside it, and note the version and source URL for the README task. Verify `GET /vendor/pico.classless.min.css` answers `200` from the running service, and that `./mvnw test` is still green with 72 tests
-- [ ] 1.2 Write the skeleton of `static/index.html`: header, three `<section hidden>` elements (queue, detail, create), the `el` helper that builds elements with no HTML path, the `call` function that adds the identity headers and returns status plus parsed body, and the one function that renders a problem detail. No class names, no external URL. Verify `/` answers `200` styled by Pico, and that a text search of the file finds no `http://`, `https://`, `class=` or `innerHTML`
+- [x] 1.2 Write the skeleton of `static/index.html`: header, three `<section hidden>` elements (queue, detail, create), the `el` helper that builds elements with no HTML path, the `call` function that adds the identity headers and returns status plus parsed body, and the one function that renders a problem detail. No class names, no external URL. Verify `/` answers `200` styled by Pico, and that a text search of the file finds no `http://`, `https://`, `class=` or `innerHTML`
 
 ## 2. Identity and the queue
 
