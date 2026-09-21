@@ -237,11 +237,71 @@ function detailView({ request, history }) {
     backToQueue(),
     el('h2', {}, request.applicationId),
     el('dl', {}, facts.flatMap(([name, value]) => [el('dt', {}, name), el('dd', {}, value)])),
-    el('div', { id: 'actions' }),
+    el('div', { id: 'actions' }, actionsView(request)),
     el('h3', {}, 'History'),
     // As returned: the service orders it newest first, so the page does not sort.
     el('ol', {}, history.map(historyEntry)),
   ];
+}
+
+// What the page offers, worked out from what the service returned. This is a
+// presentation of rules the service enforces itself -- a reviewer may not decide
+// what they raised, only the requester may amend or withdraw -- so the page
+// adds no rule of its own, and the service still decides every attempt and is
+// heard when it refuses one. Role decides the kind of action; ownership and
+// status decide whether it is worth offering.
+function offered(request) {
+  const pending = request.status === 'PENDING';
+  const mine = request.requestedBy === identity.id;
+  const requester = pending && mine && identity.role === 'RELATIONSHIP_MANAGER';
+  return {
+    decide: pending && !mine && identity.role === 'REVIEWER',
+    amend: requester,
+    withdraw: requester,
+  };
+}
+
+function actionsView(request) {
+  const allowed = offered(request);
+  return [
+    allowed.decide && decisionPanel(request),
+  ].filter(Boolean);
+}
+
+function decisionPanel(request) {
+  return el('form', { novalidate: true, onsubmit: decide },
+    el('h3', {}, 'Decision'),
+    // The visible form of a decision binding to an exact version.
+    el('p', {}, 'This decision is recorded against version ' + request.version + '.'),
+    el('label', {}, 'Note (optional)', el('textarea', { name: 'note', rows: '3' })),
+    el('button', { type: 'submit', value: 'APPROVE' }, 'Approve'),
+    el('button', { type: 'submit', value: 'DECLINE' }, 'Decline'));
+}
+
+async function decide(event) {
+  event.preventDefault();
+  const form = event.target;
+  // The version is read from what is on show, never from a fresher source, so a
+  // request that moved on since it was opened is refused rather than decided.
+  const body = { decision: event.submitter.value, version: shown.request.version };
+  if (form.elements.note.value !== '') body.note = form.elements.note.value;
+  await act(form, () => call('POST', '/requests/' + shown.request.id + '/decision', body));
+}
+
+// Runs a write; on success re-reads the request so the values and the history on
+// screen come from one response, on failure leaves the form as typed and says
+// why in the service's words.
+async function act(form, write) {
+  const id = shown.request.id;
+  for (const button of form.querySelectorAll('button')) button.disabled = true;
+  const result = await write();
+  if (result.ok) {
+    clearNotice();
+    await showDetail(id);
+    return;
+  }
+  for (const button of form.querySelectorAll('button')) button.disabled = false;
+  showProblem(result);
 }
 
 // What an entry carried: the discount and reason for a creation or amendment
