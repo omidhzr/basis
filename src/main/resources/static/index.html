@@ -301,7 +301,27 @@ async function act(form, write) {
     return;
   }
   for (const button of form.querySelectorAll('button')) button.disabled = false;
-  showProblem(result);
+  if (result.status === 409) explainConflict(result, id);
+  else showProblem(result);
+}
+
+// A 409 from a version-bound action means the request moved on while it was
+// open, which is the design working rather than a fault. The service's title,
+// detail and current version are shown as sent; the sentences around them are
+// only framing and never replace what the service said. Without a current
+// version to report -- a conflict with no state behind it -- the detail stands
+// alone rather than naming a version the page does not have.
+function explainConflict(result, id) {
+  const problem = result.body || {};
+  const now = problem.currentVersion != null
+    ? ' It is now at version ' + problem.currentVersion + ', status ' + problem.currentStatus + '.'
+    : '';
+  notice.replaceChildren(el('article', {},
+    el('h3', {}, problem.title),
+    el('p', {}, 'This request changed while you had it open.' + now),
+    el('p', {}, problem.detail),
+    el('button', { type: 'button', onclick: () => { clearNotice(); showDetail(id); } },
+      'Reload and review it again')));
 }
 
 // What an entry carried: the discount and reason for a creation or amendment
