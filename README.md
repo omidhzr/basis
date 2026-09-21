@@ -21,16 +21,18 @@ done. What follows is accurate as of the last commit.
 | Idempotent create | Built, tested |
 | Every rejection as a problem detail; bounded identity | Built, tested |
 | Read endpoints — `GET /requests/{id}`, `GET /requests`, `GET /applications/{id}/approved-exception` | Built, tested |
-| User interface | **Not built** |
+| User interface — one page at `/`: queue, detail, create | Built. Criteria 7–9 are verified by hand, not by the suite — see [The page](#the-page) |
 | Seed data (dev profile), `scripts/demo.sh` and `scripts/demo.ps1` | Built. The seed is tested: absent under the default profile, and checked against the domain invariants under `dev`. The scripts are verified by running them, not by the suite — they need a running service |
 
-72 tests, green. Against the acceptance criteria in `CLAUDE.md`: 1–6 are met;
-7–9 need the user interface.
+72 tests, green. Against the acceptance criteria in `CLAUDE.md`: 1–6 are met and
+tested. 7–9 belong to the page and have no automated test — that was a choice,
+and the checks are written down under [The page](#the-page) so they can be
+repeated rather than taken on trust.
 
-The service is therefore complete as an API: a request can be raised, amended,
-decided and withdrawn, and the mortgage process can ask what discount applies
-to an application. It can be started with demonstration data and walked end to
-end by script. What is left is the page a person would work from.
+A request can be raised, amended, decided and withdrawn, and the mortgage
+process can ask what discount applies to an application. It can be started with
+demonstration data, walked end to end by script, or worked through from a page
+in the browser.
 
 ---
 
@@ -45,7 +47,9 @@ and the database is in-memory.
 ./mvnw test                                                # 72 tests
 ```
 
-Explore the API at <http://localhost:8080/swagger-ui.html>.
+Work through it from the page at <http://localhost:8080/> — see
+[The page](#the-page) — or explore the API at
+<http://localhost:8080/swagger-ui.html>.
 
 ### Demonstration data
 
@@ -79,14 +83,78 @@ then keeps it out of their own queue: `reviewer-1` sees `APP-2003` and
 `APP-2004`, while `reviewer-2`, asking the same question, also sees `APP-2005`.
 `reviewer-1` can still reach it by identifier —
 `/requests/5eed0000-0000-4000-8000-000000000005` — but a decision is refused
-with `403`. The rule is applied by the query and by the decision, not by
-anything the page chooses to hide.
+with `403`. The rule is applied by the query and by the decision. The page
+also withholds the approve control on a request its own caller raised, but that
+is a courtesy: the service refuses regardless, and says why.
 
 The data is opt-in on purpose. It lives in `src/main/resources/seed/data.sql`
 and only the `dev` profile names it, because Spring Boot would run a
 classpath-root `data.sql` under every profile, including the tests', which count
 rows and assert what a queue does *not* contain. Without the profile the service
 starts empty and the tests run against a database no fixture has touched.
+
+### The page
+
+One static page, served at `/` with no build step and no network: the
+stylesheet is committed, not loaded. It is a thin client over the same API and
+holds no rule the service lacks — every bound, transition and refusal comes from
+the service, and what the service says is what is shown.
+
+The **identity switcher** in the header sets `X-User-Id` and `X-User-Role` on
+every call. It is kept per tab, so two tabs can be two people. Switching changes
+what the queue *contains*, not which buttons are hidden.
+
+A walk that shows the contested requirement, on the seeded service:
+
+1. Tab A, as `reviewer-1` (`REVIEWER`): open `APP-2004`. The decision panel says
+   the decision is recorded against **version 1**.
+2. Tab B, as `rm-1` (`RELATIONSHIP_MANAGER`): open `APP-2004`, change the
+   discount, **Amend**. It is now at version 2.
+3. Tab A: **Approve**. Nothing is recorded. The page explains that the request
+   changed while it was open, names the current version, and offers to reload;
+   the panel then names version 2.
+
+Things about the page that are decisions rather than accidents:
+
+- **What is offered follows role, ownership and status.** A reviewer is offered
+  the decision panel on a `PENDING` request they did not raise; a relationship
+  manager is offered amend and withdraw on a `PENDING` request they did raise;
+  a terminal request offers nothing. `CLAUDE.md` says both that role decides
+  what is offered and that no approve control appears on a request reached
+  directly by its own requester; this is the reading that satisfies both. Its
+  consequence is that **a reviewer who raised a request cannot amend or withdraw
+  it from the page**, though the API would allow it. Every attempt is still
+  decided by the service, and a refusal is shown in its words.
+- **It never refreshes an open request by itself.** A version changing under a
+  reviewer's eyes without their noticing would defeat the binding the page
+  exists to show. A stale view costs one `409`, which is explained.
+- **It validates nothing.** No `min`, `max` or `required` attributes, so a bad
+  value is refused by the service and shown as it said, and the bounds live in
+  one place.
+- **Text is inserted as text, never as markup.** A reason is written by one
+  person and read by another with authority to approve it.
+- **Times are shown in UTC**, from the string the service sent, and every
+  discount as basis points beside percentage points (`25 bp`, `0.25 percentage
+  points`).
+- **The create form's `Idempotency-Key` is made once per opening** and reused on
+  every attempt, so a retry is a replay. It is built from `getRandomValues`
+  because `crypto.randomUUID` does not exist when the page is opened over plain
+  HTTP by a machine's address.
+
+**Pico.css 2.1.1**, the classless build, is committed under
+`src/main/resources/static/vendor/` with its MIT licence beside it. It was taken
+from the npm package `@picocss/pico@2.1.1` (integrity
+`sha512-kIDugA7Ps4U+2BHxiNHmvgPIQDWPDU4IeU6TNRdvXQM1uZX+FibqDQT2xUOnnO2yq/LUHcwnGlu1hvf4KfXnMg==`)
+once, and is never fetched at runtime or build time.
+
+**How it was verified.** Criteria 7–9 have no automated test: `CLAUDE.md` puts
+them under manual verification, and a browser test stack would be a dependency
+this project has decided not to take. They were checked by hand against the
+service — 7: `/` renders fully styled and makes requests to the service only,
+from a start with no profile; 8: the two-tab walk above; 9: as `rm-1` create,
+amend, then as `reviewer-2` approve, and separately create and withdraw. To
+repeat them, follow those steps. The suite's 72 tests are unaffected by the
+page's existence.
 
 ### The demo scripts
 
@@ -428,6 +496,10 @@ already moved, which points at people, not code:
 - Relationship managers amending requests while they sit under review.
 - Two reviewers looking at the same request.
 
+The page adds nothing to this rate by itself: it never refreshes an open request,
+so a `409` from it is a real concurrent edit, explained with the current version
+and a button to reload.
+
 The fix is a shorter path between reading a request and deciding it, not a
 looser guard. If the rate is ever driven down by relaxing the version check,
 the service has stopped answering the question it exists to answer.
@@ -450,6 +522,8 @@ src/main/java/com/example/basis/
 src/main/resources/schema.sql       three tables, with the reasoning in comments
 src/main/resources/seed/data.sql    demonstration data, loaded only by the dev profile
 src/main/resources/application-dev.properties   names the seed; the default profile does not
+src/main/resources/static/index.html            the page: markup, script, no build step
+src/main/resources/static/vendor/               Pico.css, committed, with its licence
 scripts/demo.sh, demo.ps1           the same scenario for bash and PowerShell
 openspec/                           the specs, and the change history behind them
 ```

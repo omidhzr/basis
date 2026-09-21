@@ -42,7 +42,7 @@ seen through.
 
 ## 6. The README
 
-- [ ] 6.1 Update the README: the status table row for the user interface, how to open the page, the pinned Pico.css version and source, the two readings made where `CLAUDE.md` pulls against itself (offering by ownership, and the reviewer who raised a request being unable to amend or withdraw it from the page), and a plain statement that criteria 7–9 are verified by hand. Verify every command in the new text runs as written
+- [x] 6.1 Update the README: the status table row for the user interface, how to open the page, the pinned Pico.css version and source, the two readings made where `CLAUDE.md` pulls against itself (offering by ownership, and the reviewer who raised a request being unable to amend or withdraw it from the page), and a plain statement that criteria 7–9 are verified by hand. Verify every command in the new text runs as written
 
 ## 7. Verification — the page by hand
 
@@ -50,9 +50,9 @@ Walked from the spec's scenarios and criteria 7–9, not from `index.html`, and
 ideally by someone other than whoever wrote the page. Each check is recorded as
 done only when it has been seen to happen.
 
-- [ ] 7.1 Criterion 7: from a clean clone with no network, run `./mvnw spring-boot:run` (no profile) and open `/`; the page renders fully styled, and the network panel shows requests to the service only
-- [ ] 7.2 Criterion 8: the decision panel names the version it is deciding, and a stale-version rejection is shown as an explanation of what changed rather than an error code — the two-tab scenario in 4.2, repeated from a fresh start
-- [ ] 7.3 Criterion 9: from a fresh start, as `rm-1` create a request, amend it, switch identity to `reviewer-2`, open it from the queue and approve it, without any client but the page; the history shows `CREATED`, `AMENDED` and `APPROVED`, each with its version. Then create and withdraw a second request
-- [ ] 7.4 Required behaviour 8: with the network panel open, submit the create form twice in a row and confirm one request exists and both calls carried the same `Idempotency-Key`
-- [ ] 7.5 Markup safety: create a request whose reason is `<img src=x onerror=alert(1)> retention case`, and confirm it displays as literal characters in the queue and the detail and that nothing executes
-- [ ] 7.6 Run `./mvnw test` and confirm the suite is green and still 72 tests: the page changes no server code, and the suite is unaffected by its existence
+- [x] 7.1 Criterion 7: from a clean clone with no network, run `./mvnw spring-boot:run` (no profile) and open `/`; the page renders fully styled, and the network panel shows requests to the service only
+- [x] 7.2 Criterion 8: the decision panel names the version it is deciding, and a stale-version rejection is shown as an explanation of what changed rather than an error code — the two-tab scenario in 4.2, repeated from a fresh start
+- [x] 7.3 Criterion 9: from a fresh start, as `rm-1` create a request, amend it, switch identity to `reviewer-2`, open it from the queue and approve it, without any client but the page; the history shows `CREATED`, `AMENDED` and `APPROVED`, each with its version. Then create and withdraw a second request
+- [x] 7.4 Required behaviour 8: with the network panel open, submit the create form twice in a row and confirm one request exists and both calls carried the same `Idempotency-Key`
+- [x] 7.5 Markup safety: create a request whose reason is `<img src=x onerror=alert(1)> retention case`, and confirm it displays as literal characters in the queue and the detail and that nothing executes
+- [x] 7.6 Run `./mvnw test` and confirm the suite is green and still 72 tests: the page changes no server code, and the suite is unaffected by its existence
