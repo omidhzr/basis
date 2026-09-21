@@ -39,6 +39,6 @@ worth nothing until something loads it.
 Separate session. `@SpringBootTest`, written from the design's two assertions
 about the seed and from the invariants in CLAUDE.md.
 
-- [ ] 5.1 Assert that under the default profile none of the seed's fixed identifiers is present in the shared database — other tests' requests legitimately are — so that moving the file to the classpath root fails here rather than in unrelated tests
-- [ ] 5.2 Assert, under the dev profile and against a distinct in-memory database URL so the seed never reaches the database the rest of the suite shares, that the fixture satisfies what it claims: the amended request at version 2 carrying both a `CREATED` and an `AMENDED` entry, each decided request carrying `decided_by` and `decided_at`, no request decided by the person who raised it, and every discount within the permitted range
-- [ ] 5.3 Run `./mvnw test` and confirm the whole suite is green, including that the default-profile tests are unaffected by the existence of the seed
+- [x] 5.1 Assert that under the default profile none of the seed's fixed identifiers is present in the shared database — other tests' requests legitimately are — so that moving the file to the classpath root fails here rather than in unrelated tests
+- [x] 5.2 Assert, under the dev profile and against a distinct in-memory database URL so the seed never reaches the database the rest of the suite shares, that the fixture satisfies what it claims: the amended request at version 2 carrying both a `CREATED` and an `AMENDED` entry, each decided request carrying `decided_by` and `decided_at`, no request decided by the person who raised it, and every discount within the permitted range
+- [x] 5.3 Run `./mvnw test` and confirm the whole suite is green, including that the default-profile tests are unaffected by the existence of the seed
