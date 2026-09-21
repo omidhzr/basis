@@ -32,7 +32,7 @@ worth nothing until something loads it.
 
 ## 4. The README
 
-- [ ] 4.1 Replace the "no seed data yet" line with how to start under the dev profile and what the seed contains, and add what each script demonstrates and how to run it on either platform. Verify the commands in the README run as written on a clean checkout
+- [x] 4.1 Replace the "no seed data yet" line with how to start under the dev profile and what the seed contains, and add what each script demonstrates and how to run it on either platform. Verify the commands in the README run as written on a clean checkout
 
 ## 5. Verification — the seed under test
 

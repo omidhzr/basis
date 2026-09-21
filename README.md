@@ -22,15 +22,15 @@ done. What follows is accurate as of the last commit.
 | Every rejection as a problem detail; bounded identity | Built, tested |
 | Read endpoints — `GET /requests/{id}`, `GET /requests`, `GET /applications/{id}/approved-exception` | Built, tested |
 | User interface | **Not built** |
-| Seed data, demo scripts | **Not built** |
+| Seed data (dev profile), `scripts/demo.sh` and `scripts/demo.ps1` | Built. The scripts are verified by running them, not by the suite — they need a running service. The seed fixture's tests are not written yet |
 
 65 tests, green. Against the acceptance criteria in `CLAUDE.md`: 1–6 are met;
 7–9 need the user interface.
 
 The service is therefore complete as an API: a request can be raised, amended,
 decided and withdrawn, and the mortgage process can ask what discount applies
-to an application. What is left is people-shaped — a page to work from, seed
-data to open it on, and scripts that walk the scenario end to end.
+to an application. It can be started with demonstration data and walked end to
+end by script. What is left is the page a person would work from.
 
 ---
 
@@ -40,13 +40,96 @@ A JDK 17 is the only prerequisite. The Maven wrapper fetches everything else,
 and the database is in-memory.
 
 ```bash
-./mvnw spring-boot:run          # http://localhost:8080
-./mvnw test                     # 65 tests
+./mvnw spring-boot:run                                     # http://localhost:8080, starts empty
+./mvnw spring-boot:run -Dspring-boot.run.profiles=dev      # the same, with demonstration data
+./mvnw test                                                # 65 tests
 ```
 
 Explore the API at <http://localhost:8080/swagger-ui.html>.
 
-There is no seed data yet, so start by creating a request:
+### Demonstration data
+
+Under the `dev` profile five requests are loaded at startup, each with the
+history its life implies:
+
+| Application | Raised by | State | Discount |
+|---|---|---|---|
+| `APP-2001` | `rm-1` | `APPROVED` by `reviewer-1` | 30 bp |
+| `APP-2002` | `rm-2` | `DECLINED` by `reviewer-2` | 75 bp |
+| `APP-2003` | `rm-2` | `PENDING` at **version 2**, amended down from 60 bp | 45 bp |
+| `APP-2004` | `rm-1` | `PENDING` at version 1 | 25 bp |
+| `APP-2005` | `reviewer-1` | `PENDING` at version 1, **raised by a reviewer** | 20 bp |
+
+Switching identity changes what a caller sees rather than what they are
+offered. Nothing verifies identity, so any user id works:
+
+```bash
+# a reviewer's queue: the pending requests raised by others
+curl -s http://localhost:8080/requests \
+  -H 'X-User-Id: reviewer-1' -H 'X-User-Role: REVIEWER'
+
+# a requester's queue: their own, in every state
+curl -s http://localhost:8080/requests \
+  -H 'X-User-Id: rm-2' -H 'X-User-Role: RELATIONSHIP_MANAGER'
+```
+
+`APP-2005` is there to make four-eyes visible. Nothing restricts raising a
+request to a relationship manager, so a reviewer can raise one, and the service
+then keeps it out of their own queue: `reviewer-1` sees `APP-2003` and
+`APP-2004`, while `reviewer-2`, asking the same question, also sees `APP-2005`.
+`reviewer-1` can still reach it by identifier —
+`/requests/5eed0000-0000-4000-8000-000000000005` — but a decision is refused
+with `403`. The rule is applied by the query and by the decision, not by
+anything the page chooses to hide.
+
+The data is opt-in on purpose. It lives in `src/main/resources/seed/data.sql`
+and only the `dev` profile names it, because Spring Boot would run a
+classpath-root `data.sql` under every profile, including the tests', which count
+rows and assert what a queue does *not* contain. Without the profile the service
+starts empty and the tests run against a database no fixture has touched.
+
+### The demo scripts
+
+One scenario, end to end, narrated — the same eight steps in the same words in
+two scripts, so it runs without a prerequisite on either platform. Start the
+service in one terminal, then in another:
+
+```bash
+scripts/demo.sh                  # macOS, Linux, Git Bash
+```
+
+```powershell
+.\scripts\demo.ps1               # Windows PowerShell 5.1 or later
+```
+
+Either takes a base URL if the service is not on port 8080
+(`scripts/demo.sh http://host:port`, `.\scripts\demo.ps1 -BaseUrl http://host:port`).
+If Windows refuses to run a local script, use
+`powershell -ExecutionPolicy Bypass -File scripts\demo.ps1`.
+
+| Step | What it does | Answer |
+|---|---|---|
+| 1 | A relationship manager raises a request | `201`, `PENDING` at version 1 |
+| 2 | The same create is retried with the same `Idempotency-Key` | `201`, the first response byte for byte |
+| 3 | The requester amends it | `200`, version 2 |
+| 4 | A reviewer approves version 1, which has moved on | `409`, naming version 2 |
+| 5 | The reviewer approves version 2 | `200`, `APPROVED` |
+| 6 | The requester tries to approve their own request | `403` |
+| 7 | The mortgage process reads the approved discount | `200`, 40 bp |
+| 8 | The history is read | newest first, each entry naming its version |
+
+A step that does not answer what it narrates stops the script with `MISMATCH`
+and a non-zero exit, so a demo cannot say "this is refused" and carry on after a
+success. Each run uses an application identifier of its own, so it behaves the
+same on an empty instance, a seeded one, or a second run against either.
+
+The scripts are not part of `./mvnw test`: they need a running service on a
+port, and the suite must stay a single command with no prerequisite. What they
+narrate the integration tests assert in JUnit.
+
+### By hand
+
+Or start by creating a request yourself:
 
 ```bash
 curl -i -X POST http://localhost:8080/requests \
@@ -365,6 +448,9 @@ src/main/java/com/example/basis/
         ExceptionRequest            the request, with the rules that cannot race
         RequestStatus, EntryType, Decision, UserRole
 src/main/resources/schema.sql       three tables, with the reasoning in comments
+src/main/resources/seed/data.sql    demonstration data, loaded only by the dev profile
+src/main/resources/application-dev.properties   names the seed; the default profile does not
+scripts/demo.sh, demo.ps1           the same scenario for bash and PowerShell
 openspec/                           the specs, and the change history behind them
 ```
 
