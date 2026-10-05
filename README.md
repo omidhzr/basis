@@ -285,7 +285,46 @@ stateDiagram-v2
 Every illegal transition answers `409`. Terminal means terminal: no code path
 mutates an `APPROVED`, `DECLINED` or `WITHDRAWN` request.
 
-### The two tables
+### The tables
+
+```mermaid
+erDiagram
+    EXCEPTION_REQUEST ||--|{ REQUEST_HISTORY : "has history"
+    EXCEPTION_REQUEST ||--o| IDEMPOTENCY_RECORD : "created via"
+
+    EXCEPTION_REQUEST {
+        uuid      id             PK
+        string    application_id "immutable"
+        int       discount_bps   "1 to 200"
+        string    reason
+        string    status         "current state"
+        int       version        "current version"
+        string    requested_by   "immutable"
+        string    decided_by     "null while PENDING"
+        timestamp decided_at     "null while PENDING"
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    REQUEST_HISTORY {
+        uuid      id          PK
+        uuid      request_id  FK
+        string    entry_type  "append only"
+        int       version     "version concerned"
+        string    actor
+        json      payload     "values at that moment"
+        timestamp occurred_at
+    }
+
+    IDEMPOTENCY_RECORD {
+        string    key           PK
+        string    caller        PK
+        uuid      request_id    FK
+        int       status_code
+        string    response_body
+        timestamp created_at
+    }
+```
 
 `exception_request` holds **what is true now** — one row per request, updated in
 place. `request_history` holds **how it got there** — one row per transition,
