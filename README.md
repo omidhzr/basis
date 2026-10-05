@@ -43,7 +43,7 @@ and the database is in-memory.
 
 ```bash
 ./mvnw spring-boot:run                                     # http://localhost:8080, starts empty
-./mvnw spring-boot:run -Dspring-boot.run.profiles=dev      # the same, with demonstration data
+./mvnw spring-boot:run "-Dspring-boot.run.profiles=dev"    # the same, with demonstration data
 ./mvnw test                                                # 72 tests
 ```
 
